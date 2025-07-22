@@ -11,7 +11,7 @@ import L from "leaflet";
 import { UserLocationMarker } from "./UserLocationMarker";
 import { LocationPermissionButton } from "./LocationPermissionButton";
 import { LocationDebug } from "./LocationDebug";
-import { useConductorsWithPermissions } from "@/hooks/useConductorsWithPermissions";
+import { useActiveConductors } from "@/hooks/useActiveConductors";
 import { Coordinates } from "../types/supabase";
 import "leaflet/dist/leaflet.css";
 import tukTukIcon from "../assets/tuktuk-icon.png";
@@ -26,27 +26,13 @@ const TukTukIcon = new L.Icon({
 const PassengerMap: React.FC = () => {
   const { t } = useTranslation();
 
-  // 🎯 MODERNIZAÇÃO: Usar hook profissional useConductorsWithPermissions
-  // ✅ Elimina: useState + useEffect + fetchActiveConductors manual
-  // ✅ Adiciona: Cache unificado + optimistic updates + error recovery
+  // 🎯 MODERNIZAÇÃO: Usar hook profissional useActiveConductors
+  // ✅ Elimina dependência de perfil admin
   const {
-    conductors, // ← Todos os condutores (cache React Query)
-    isLoading, // ← Estado centralizado
-    error, // ← Error handling automático
-    isConductorActive, // ← Helper function
-  } = useConductorsWithPermissions();
-
-  // 🎯 CONDUTORES ATIVOS: Calculado automaticamente do cache
-  // ✅ Substitui: useState([]) + setActiveConductors manual
-  const activeConductors = conductors
-    .filter((c) => isConductorActive(c.id) && c.latitude && c.longitude)
-    .map((c) => ({
-      id: c.id,
-      lat: c.latitude || 37.889, // ← 📍 CORRIGIDO: Coordenadas reais Vila Nova de Milfontes
-      lng: c.longitude || -8.785, // ← 📍 CORRIGIDO: Próximo dos condutores ativos
-      isActive: true,
-      name: c.name || "TukTuk",
-    }));
+    data: activeConductors = [],
+    isLoading,
+    error,
+  } = useActiveConductors();
 
   const [userPosition, setUserPosition] = useState<Coordinates | null>(null);
   const [showUserLocation, setShowUserLocation] = useState(false);
@@ -193,26 +179,12 @@ const PassengerMap: React.FC = () => {
     );
   }
 
-  // 🎯 CONDUTORES ATIVOS: Agora calculado do cache React Query
-  if (activeConductors.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg shadow-inner text-center">
-        <div className="text-3xl mb-2">😢</div>
-        <h3 className="text-lg font-semibold text-gray-700">
-          {t("errors.noTukTuksTitle")}
-        </h3>
-        <p className="text-sm text-gray-500 max-w-xs">
-          {t("errors.noTukTuksMessage")}
-        </p>
-      </div>
-    );
-  }
-
+  // Sempre renderiza o mapa, mesmo sem condutores
   return (
     <>
       <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
         <MapContainer
-          center={[37.889, -8.785]} // 📍 CORRIGIDO: Centro próximo aos condutores reais
+          center={[37.889, -8.785]}
           zoom={14}
           style={{ height: "100%", width: "100%" }}
           ref={mapRef}
@@ -297,6 +269,18 @@ const PassengerMap: React.FC = () => {
             />
           </svg>
         </button>
+        {/* Mensagem amigável se não houver condutores */}
+        {activeConductors.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <div className="text-3xl mb-2">😢</div>
+            <h3 className="text-lg font-semibold text-gray-700">
+              {t("errors.noTukTuksTitle")}
+            </h3>
+            <p className="text-sm text-gray-500 max-w-xs">
+              {t("errors.noTukTuksMessage")}
+            </p>
+          </div>
+        )}
       </div>
       {import.meta.env.DEV && <LocationDebug />}
     </>
