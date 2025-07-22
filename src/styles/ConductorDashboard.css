@@ -1,0 +1,218 @@
+/* src/styles/ConductorDashboard.css */
+
+.conductor-dashboard-container {
+  font-family: 'Arial', sans-serif;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #f4f7f6;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.dashboard-header h2 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  color: #0056b3; /* Um tom de azul para o título */
+}
+
+.dashboard-header p {
+  font-size: 1.1em;
+  color: #555;
+}
+
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .dashboard-content {
+    grid-template-columns: 1fr 2fr; /* Status e Bloqueios em uma coluna, Reservas em outra */
+  }
+  .status-section {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+  }
+  .blocked-periods-section {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+  }
+  .reservations-section {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+  }
+}
+
+.dashboard-section {
+  background-color: #ffffff;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-section h3 {
+  color: #0056b3;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.8em;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+
+/* Estilos para os cards individuais */
+.status-toggle-card,
+.reservations-list-card,
+.blocked-periods-card {
+  /* Já têm estilos base do .dashboard-section */
+}
+
+/* Estilos para o Status Toggle */
+.status-toggle-card p {
+  font-size: 1.1em;
+  margin-bottom: 15px;
+}
+
+.status-toggle-card .status-active {
+  color: #28a745; /* Verde para ativo */
+  font-weight: bold;
+}
+
+.status-toggle-card .status-inactive {
+  color: #dc3545; /* Vermelho para inativo */
+  font-weight: bold;
+}
+
+.status-toggle-card .toggle-button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+.status-toggle-card .toggle-button:hover {
+  background-color: #0056b3;
+}
+
+.status-toggle-card .toggle-button.inactive {
+  background-color: #6c757d; /* Cinza para inativo */
+}
+
+.status-toggle-card .toggle-button.inactive:hover {
+  background-color: #5a6268;
+}
+
+.status-toggle-card .toggle-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Estilos para a Lista de Reservas */
+.reservations-list-card table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.reservations-list-card th,
+.reservations-list-card td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.reservations-list-card th {
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+.reservations-list-card tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Estilos para Períodos Bloqueados */
+.blocked-periods-card .add-block-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.blocked-periods-card .add-block-form input[type="date"],
+.blocked-periods-card .add-block-form input[type="time"],
+.blocked-periods-card .add-block-form input[type="text"] {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+.blocked-periods-card .add-block-form button {
+  background-color: #28a745; /* Verde para adicionar */
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+.blocked-periods-card .add-block-form button:hover {
+  background-color: #218838;
+}
+
+.blocked-periods-card .blocked-periods-list {
+  list-style: none;
+  padding: 0;
+}
+
+.blocked-periods-card .blocked-periods-list li {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95em;
+}
+
+.blocked-periods-card .blocked-periods-list li button {
+  background-color: #dc3545; /* Vermelho para remover */
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background-color 0.3s ease;
+}
+
+.blocked-periods-card .blocked-periods-list li button:hover {
+  background-color: #c82333;
+}
+
+/* Estilos para mensagens de erro e carregamento */
+.error {
+  color: #dc3545;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.loading {
+  color: #007bff;
+  font-style: italic;
+}

@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import { AdminReservation, BlockedPeriod } from "@/types/adminReservations";
+import { SupabaseClient } from "@supabase/supabase-js";
+
+// Definir um tipo básico para o cliente Supabase
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TypedSupabaseClient = SupabaseClient<any, "public", any>;
 
 export const checkSupabaseConfiguration = (): boolean => {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -18,7 +23,7 @@ export const fetchReservationsFromSupabase = async (): Promise<
   console.log("Fetching reservations from Supabase...");
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as TypedSupabaseClient)
       .from("reservations")
       .select("*")
       .order("created_at", { ascending: false });
@@ -43,7 +48,7 @@ export const updateReservationInSupabase = async (
   console.log("Updating reservation in Supabase:", { id, status });
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as TypedSupabaseClient)
       .from("reservations")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", id)
@@ -68,7 +73,7 @@ export const updateManualPaymentInSupabase = async (
   console.log("Updating manual payment in Supabase:", { id, manualPayment });
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as TypedSupabaseClient)
       .from("reservations")
       .update({
         manual_payment: manualPayment,
@@ -89,56 +94,29 @@ export const updateManualPaymentInSupabase = async (
   }
 };
 
-// --- Novas funções para condutores ---
-export const fetchActiveConductors = async (): Promise<string[]> => {
+// --- Funções simplificadas para condutores ---
+export const fetchActiveConductors = async () => {
   try {
-    const { data, error } = await (supabase as any)
-      .from("active_conductors")
-      .select("conductor_id")
+    const { data, error } = await (supabase as TypedSupabaseClient)
+      .from("conductors")
+      .select("id, name, latitude, longitude, is_active")
       .eq("is_active", true);
 
     if (error) {
       console.error("Error fetching active conductors:", error);
-      return ["condutor2"]; // fallback para condutor 2
+      return [];
     }
 
-    return data?.map((item: any) => item.conductor_id) || ["condutor2"];
+    return data || [];
   } catch (error) {
     console.error("Error fetching active conductors:", error);
-    return ["condutor2"];
-  }
-};
-
-export const updateActiveConductors = async (
-  conductorIds: string[]
-): Promise<void> => {
-  try {
-    // Primeiro, desativar todos os condutores
-    await (supabase as any)
-      .from("active_conductors")
-      .update({
-        is_active: false,
-        deactivated_at: new Date().toISOString(),
-      })
-      .eq("is_active", true);
-
-    // Depois, ativar apenas os selecionados
-    for (const conductorId of conductorIds) {
-      await (supabase as any).from("active_conductors").insert({
-        conductor_id: conductorId,
-        is_active: true,
-        activated_at: new Date().toISOString(),
-      });
-    }
-  } catch (error) {
-    console.error("Error updating active conductors:", error);
-    throw error;
+    return [];
   }
 };
 
 export const fetchConductors = async () => {
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as TypedSupabaseClient)
       .from("conductors")
       .select("*")
       .order("name");
@@ -158,7 +136,7 @@ export const fetchConductors = async () => {
 // --- Novas funções para bloqueios ---
 export const fetchBlockedPeriods = async (): Promise<BlockedPeriod[]> => {
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as TypedSupabaseClient)
       .from("blocked_periods")
       .select("*")
       .order("created_at", { ascending: false });
@@ -169,18 +147,28 @@ export const fetchBlockedPeriods = async (): Promise<BlockedPeriod[]> => {
     }
 
     // Mapear os campos do banco para a interface TypeScript
-    return (data || []).map((item: any) => ({
-      id: item.id,
-      date: item.date,
-      startTime: item.start_time,
-      endTime: item.end_time,
-      reason: item.reason,
-      createdBy: item.created_by,
-      createdAt: item.created_at, // <-- incluir campo de data de criação
-    }));
+    return (data || []).map(
+      (item: {
+        id: string;
+        date: string;
+        start_time: string | null;
+        end_time: string | null;
+        reason: string;
+        created_by: string;
+        created_at: string;
+      }) => ({
+        id: item.id,
+        date: item.date,
+        startTime: item.start_time,
+        endTime: item.end_time,
+        reason: item.reason,
+        createdBy: item.created_by,
+        createdAt: item.created_at, // <-- incluir campo de data de criação
+      })
+    );
   } catch (error) {
     console.error("Error fetching blocked periods:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -198,7 +186,7 @@ export const createBlockedPeriod = async (
       created_at: blockedPeriod.createdAt, // <-- incluir campo de data de criação se fornecido
     };
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as TypedSupabaseClient)
       .from("blocked_periods")
       .insert(dbBlockedPeriod)
       .select()
@@ -227,7 +215,7 @@ export const createBlockedPeriod = async (
 
 export const deleteBlockedPeriod = async (id: string): Promise<void> => {
   try {
-    const { error } = await (supabase as any)
+    const { error } = await (supabase as TypedSupabaseClient)
       .from("blocked_periods")
       .delete()
       .eq("id", id);
@@ -244,19 +232,29 @@ export const deleteBlockedPeriod = async (id: string): Promise<void> => {
 
 export const deleteBlockedPeriodsByDate = async (
   date: string,
-  startTime?: string
+  startTime?: string,
+  onlyTimeBlocks?: boolean
 ): Promise<void> => {
   try {
-    console.log("Deletando bloqueios para data:", date, "horário:", startTime);
+    console.log(
+      `Deletando bloqueios para data: ${date}, horário: ${
+        startTime || "N/A"
+      }, onlyTimeBlocks: ${!!onlyTimeBlocks}`
+    );
 
-    let query = (supabase as any)
+    let query = (supabase as TypedSupabaseClient)
       .from("blocked_periods")
       .delete()
       .eq("date", date);
 
-    if (startTime) {
+    if (onlyTimeBlocks) {
+      // Apaga todos os bloqueios de hora para a data
+      query = query.not("start_time", "is", null);
+    } else if (startTime) {
+      // Apaga um bloqueio de hora específico
       query = query.eq("start_time", startTime);
     } else {
+      // Apaga um bloqueio de dia inteiro (comportamento original)
       query = query.is("start_time", null);
     }
 
@@ -267,9 +265,46 @@ export const deleteBlockedPeriodsByDate = async (
       throw error;
     }
 
-    console.log("Bloqueios deletados com sucesso. Count:", count);
+    console.log(`${count} bloqueios deletados com sucesso.`);
   } catch (error) {
     console.error("Error deleting blocked periods by date:", error);
+    throw error;
+  }
+};
+
+export const deleteBlockedPeriodByReservationId = async (
+  reservationId: string
+): Promise<void> => {
+  try {
+    console.log(`Deletando bloqueio para a reserva ID: ${reservationId}`);
+
+    const { error, count } = await (supabase as TypedSupabaseClient)
+      .from("blocked_periods")
+      .delete()
+      .like("reason", `%ID: ${reservationId})`);
+
+    if (error) {
+      console.error(
+        `Erro ao deletar bloqueio para a reserva ${reservationId}:`,
+        error
+      );
+      throw error;
+    }
+
+    if (count && count > 0) {
+      console.log(
+        `Bloqueio associado à reserva ${reservationId} deletado com sucesso.`
+      );
+    } else {
+      console.log(
+        `Nenhum bloqueio encontrado para a reserva ${reservationId}. Nenhuma ação foi tomada.`
+      );
+    }
+  } catch (error) {
+    console.error(
+      `Erro na função deleteBlockedPeriodByReservationId para a reserva ${reservationId}:`,
+      error
+    );
     throw error;
   }
 };
@@ -280,7 +315,7 @@ export const cleanDuplicateBlockedPeriods = async (): Promise<number> => {
 
     // Buscar todos os bloqueios
     const { data: allBlockedPeriods, error: fetchError } = await (
-      supabase as any
+      supabase as TypedSupabaseClient
     )
       .from("blocked_periods")
       .select("*")
@@ -297,10 +332,10 @@ export const cleanDuplicateBlockedPeriods = async (): Promise<number> => {
     }
 
     // Agrupar por data e horário
-    const groupedByDateAndTime: { [key: string]: any[] } = {};
+    const groupedByDateAndTime: { [key: string]: BlockedPeriod[] } = {};
 
-    allBlockedPeriods.forEach((period: any) => {
-      const key = `${period.date}_${period.start_time}`;
+    allBlockedPeriods.forEach((period: BlockedPeriod) => {
+      const key = `${period.date}_${period.startTime}`;
       if (!groupedByDateAndTime[key]) {
         groupedByDateAndTime[key] = [];
       }
@@ -310,11 +345,11 @@ export const cleanDuplicateBlockedPeriods = async (): Promise<number> => {
     // Identificar duplicados (mais de 1 bloqueio para mesma data/horário)
     const duplicatesToRemove: string[] = [];
 
-    Object.values(groupedByDateAndTime).forEach((periods: any[]) => {
+    Object.values(groupedByDateAndTime).forEach((periods: BlockedPeriod[]) => {
       if (periods.length > 1) {
         // Manter o mais recente (primeiro da lista, já ordenado por created_at desc)
         const toRemove = periods.slice(1); // Remove todos exceto o primeiro
-        toRemove.forEach((period: any) => {
+        toRemove.forEach((period: BlockedPeriod) => {
           duplicatesToRemove.push(period.id);
         });
       }
@@ -330,7 +365,9 @@ export const cleanDuplicateBlockedPeriods = async (): Promise<number> => {
     );
 
     // Remover duplicados
-    const { error: deleteError, count } = await (supabase as any)
+    const { error: deleteError, count } = await (
+      supabase as TypedSupabaseClient
+    )
       .from("blocked_periods")
       .delete()
       .in("id", duplicatesToRemove);
@@ -340,10 +377,104 @@ export const cleanDuplicateBlockedPeriods = async (): Promise<number> => {
       throw deleteError;
     }
 
-    console.log(`Limpeza concluída: ${count} bloqueios duplicados removidos`);
+    console.log(`Limpeza concluída: ${count} bloqueados duplicados removidos`);
     return count || 0;
   } catch (error) {
     console.error("Error cleaning duplicate blocked periods:", error);
     throw error;
+  }
+};
+
+// --- Funções de rastreamento simplificadas ---
+export const getDriverTrackingStatus = async (
+  conductorId: string
+): Promise<boolean> => {
+  try {
+    const { data, error } = await (supabase as TypedSupabaseClient)
+      .from("conductors")
+      .select("is_active")
+      .eq("id", conductorId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Error fetching conductor tracking status:", error);
+      return false;
+    }
+
+    return data?.is_active || false;
+  } catch (error) {
+    console.error("Error fetching conductor tracking status:", error);
+    return false;
+  }
+};
+
+export const updateDriverTrackingStatus = async (
+  conductorId: string,
+  isTrackingActive: boolean
+): Promise<void> => {
+  console.log(
+    `📡 Atualizando status do condutor ${conductorId} para ${
+      isTrackingActive ? "ATIVO" : "INATIVO"
+    }`
+  );
+
+  if (!conductorId || conductorId.trim() === "") {
+    throw new Error("ID do condutor é obrigatório");
+  }
+
+  const { data, error } = await (supabase as TypedSupabaseClient)
+    .from("conductors")
+    .update({ is_active: isTrackingActive })
+    .eq("id", conductorId)
+    .select();
+
+  if (error) {
+    console.error("❌ Erro do Supabase:", error);
+    throw new Error(`Erro do Supabase: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`Condutor não encontrado (ID: ${conductorId})`);
+  }
+
+  console.log(
+    `✅ Status atualizado com sucesso para ${
+      isTrackingActive ? "ATIVO" : "INATIVO"
+    }`
+  );
+};
+
+export const updateConductorLocation = async (
+  conductorId: string,
+  latitude: number,
+  longitude: number
+): Promise<void> => {
+  // Atualizar localização atual na tabela conductors
+  const { error: locationError } = await (supabase as TypedSupabaseClient)
+    .from("conductors")
+    .update({ latitude, longitude })
+    .eq("id", conductorId);
+
+  if (locationError) {
+    console.error("Erro ao atualizar localização:", locationError);
+    throw locationError;
+  }
+
+  // Salvar no histórico (opcional)
+  const { error: historyError } = await (supabase as TypedSupabaseClient)
+    .from("conductor_locations")
+    .insert({
+      conductor_id: conductorId,
+      latitude,
+      longitude,
+      accuracy: 0,
+    });
+
+  if (historyError) {
+    console.warn(
+      "Aviso: Erro ao salvar histórico de localização:",
+      historyError
+    );
+    // Não fazemos throw aqui porque o histórico é opcional
   }
 };

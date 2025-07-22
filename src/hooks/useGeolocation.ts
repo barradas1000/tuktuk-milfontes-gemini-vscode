@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from "react";
 
 export interface GeolocationPosition {
   coords: {
@@ -18,142 +18,161 @@ export interface GeolocationError {
   message: string;
 }
 
-export type PermissionStatus = 'granted' | 'denied' | 'prompt';
+export type PermissionStatus = "granted" | "denied" | "prompt";
 
 export const useGeolocation = () => {
   const [position, setPosition] = useState<GeolocationPosition | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [permission, setPermission] = useState<PermissionStatus>('prompt');
+  const [permission, setPermission] = useState<PermissionStatus>("prompt");
   const [isLoading, setIsLoading] = useState(false);
+  const isSupported = typeof navigator !== "undefined" && "geolocation" in navigator;
+  const watchIdRef = useRef<number | null>(null);
 
-  // Verificar se o navegador suporta geolocalização
-  const isSupported = typeof navigator !== 'undefined' && 'geolocation' in navigator;
-
-  // Verificar permissão atual
-  const checkPermission = useCallback(async () => {
+  useEffect(() => {
     if (!isSupported) {
-      setPermission('denied');
+      setPermission("denied");
+      setError("Geolocalização não é suportada neste navegador");
       return;
     }
 
-    try {
-      // Para navegadores que suportam Permissions API
-      if ('permissions' in navigator) {
-        const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+    let cleanup: (() => void) | undefined;
+
+    if ("permissions" in navigator) {
+      navigator.permissions.query({ name: "geolocation" }).then((result) => {
         setPermission(result.state as PermissionStatus);
-        
-        result.addEventListener('change', () => {
-          setPermission(result.state as PermissionStatus);
-        });
-      } else {
-        setPermission('prompt');
+        const handleChange = () => setPermission(result.state as PermissionStatus);
+        result.addEventListener("change", handleChange);
+        cleanup = () => result.removeEventListener("change", handleChange);
+      }).catch((err) => {
+        setPermission("prompt");
+        setError("Erro ao verificar permissões de geolocalização");
+        console.error("Error checking geolocation permission:", err);
+      });
+    } else {
+      setPermission("prompt");
+    }
+
+    return () => {
+      if (cleanup) {
+        cleanup();
       }
-    } catch (err) {
-      setPermission('prompt');
-    }
-  }, [isSupported]);
-
-  // Obter localização atual
-  const getLocation = useCallback((options?: PositionOptions) => {
-    if (!isSupported) {
-      setError('Geolocalização não é suportada neste navegador');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    const defaultOptions: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 60000,
-      ...options
     };
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPosition(pos);
-        setPermission('granted');
-        setIsLoading(false);
-      },
-      (err: GeolocationPositionError) => {
-        let errorMessage = 'Erro ao obter localização';
-        
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            errorMessage = 'Permissão de localização negada';
-            setPermission('denied');
-            break;
-          case err.POSITION_UNAVAILABLE:
-            errorMessage = 'Informação de localização indisponível';
-            break;
-          case err.TIMEOUT:
-            errorMessage = 'Tempo limite excedido ao obter localização';
-            break;
-          default:
-            errorMessage = err.message || 'Erro desconhecido';
-        }
-        
-        setError(errorMessage);
-        setIsLoading(false);
-      },
-      defaultOptions
-    );
   }, [isSupported]);
 
-  // Observar mudanças de posição
+  const getLocation = useCallback(
+    async (options?: PositionOptions, retries = 2): Promise<void> => {
+      if (!isSupported) {
+        setError("Geolocalização não é suportada neste navegador");
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      const defaultOptions: PositionOptions = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+        ...options,
+      };
+
+      const attemptGetLocation = async (attempt: number): Promise<void> => {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, defaultOptions);
+          });
+          setPosition(pos);
+          setPermission("granted");
+        } catch (err) {
+          if (attempt < retries) {
+            return attemptGetLocation(attempt + 1);
+          }
+
+          const geoError = err as GeolocationPositionError;
+
+          let errorMessage = `Erro ao obter localização (código: ${geoError.code})`;
+
+          switch (geoError.code) {
+            case geoError.PERMISSION_DENIED:
+              errorMessage = "Permissão de localização negada pelo usuário";
+              setPermission("denied");
+              break;
+            case geoError.POSITION_UNAVAILABLE:
+              errorMessage = "Informação de localização indisponível";
+              break;
+            case geoError.TIMEOUT:
+              errorMessage = "Tempo limite excedido ao obter localização";
+              break;
+            default:
+              errorMessage = geoError.message || "Erro desconhecido ao obter localização";
+          }
+          setError(errorMessage);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return attemptGetLocation(0);
+    },
+    [isSupported]
+  );
+
   const watchPosition = useCallback((options?: PositionOptions) => {
     if (!isSupported) {
-      setError('Geolocalização não é suportada neste navegador');
+      setError("Geolocalização não é suportada neste navegador");
       return null;
     }
 
     const defaultOptions: PositionOptions = {
       enableHighAccuracy: true,
       timeout: 10000,
-      maximumAge: 60000,
-      ...options
+      maximumAge: 0,
+      ...options,
     };
 
-    return navigator.geolocation.watchPosition(
+    const id = navigator.geolocation.watchPosition(
       (pos) => {
         setPosition(pos);
-        setPermission('granted');
+        setPermission("granted");
       },
-      (err: GeolocationPositionError) => {
-        let errorMessage = 'Erro ao monitorar localização';
-        
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            errorMessage = 'Permissão de localização negada';
-            setPermission('denied');
+      (err) => {
+        const geoError = err as GeolocationPositionError;
+
+        let errorMessage = `Erro ao monitorar localização (código: ${geoError.code})`;
+
+        switch (geoError.code) {
+          case geoError.PERMISSION_DENIED:
+            errorMessage = "Permissão de localização negada pelo usuário";
+            setPermission("denied");
             break;
-          case err.POSITION_UNAVAILABLE:
-            errorMessage = 'Informação de localização indisponível';
+          case geoError.POSITION_UNAVAILABLE:
+            errorMessage = "Informação de localização indisponível";
             break;
-          case err.TIMEOUT:
-            errorMessage = 'Tempo limite excedido ao obter localização';
+            case geoError.TIMEOUT:
+            errorMessage = "Tempo limite excedido ao obter localização";
             break;
           default:
-            errorMessage = err.message || 'Erro desconhecido';
+            errorMessage = geoError.message || "Erro desconhecido ao monitorar localização";
         }
-        
         setError(errorMessage);
       },
       defaultOptions
     );
+    watchIdRef.current = id;
+    return id;
   }, [isSupported]);
 
-  // Limpar posição
   const clearPosition = useCallback(() => {
     setPosition(null);
     setError(null);
   }, []);
 
-  // Verificar permissão na inicialização
-  useEffect(() => {
-    checkPermission();
-  }, [checkPermission]);
+  const clearWatch = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  }, []);
 
   return {
     position,
@@ -164,6 +183,6 @@ export const useGeolocation = () => {
     getLocation,
     watchPosition,
     clearPosition,
-    checkPermission
+    clearWatch,
   };
-}; 
+};

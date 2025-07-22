@@ -11,6 +11,7 @@ import {
   fetchReservationsFromSupabase,
   updateReservationInSupabase,
   updateManualPaymentInSupabase,
+  createBlockedPeriod, // <-- Adicionado
 } from "@/services/supabaseService";
 import { mockReservations } from "@/data/mockReservations";
 import {
@@ -62,13 +63,30 @@ export const useAdminReservations = () => {
 
   // Update reservation status
   const updateReservationMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async (reservation: AdminReservation) => {
       if (isUsingMockData) {
-        console.log("Mock update reservation:", { id, status });
-        return { id, status };
+        console.log("Mock update reservation:", reservation);
+        return reservation;
       }
-      
-      return await updateReservationInSupabase(id, status);
+
+      // Atualiza a reserva primeiro
+      const updatedReservation = await updateReservationInSupabase(
+        reservation.id,
+        reservation.status
+      );
+
+      // Se a reserva foi confirmada, cria o bloqueio
+      if (updatedReservation.status === "confirmed") {
+        await createBlockedPeriod({
+          date: updatedReservation.reservation_date,
+          startTime: updatedReservation.reservation_time,
+          endTime: updatedReservation.reservation_time, // Mesmo que o início para um único slot
+          reason: `Reserva: ${updatedReservation.customer_name} (ID: ${updatedReservation.id})`,
+          createdBy: "Sistema (Reserva)",
+        });
+      }
+
+      return updatedReservation;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-reservations"] });
@@ -77,7 +95,7 @@ export const useAdminReservations = () => {
         description: `Status alterado para: ${variables.status}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Error updating reservation:", error);
       toast({
         title: "Erro ao atualizar reserva",
@@ -116,7 +134,7 @@ export const useAdminReservations = () => {
         description: `Valor manual atualizado para €${variables.manualPayment}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Error updating manual payment:", error);
       toast({
         title: "Erro ao atualizar pagamento",

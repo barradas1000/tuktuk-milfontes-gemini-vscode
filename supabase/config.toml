@@ -1,1 +1,7 @@
+[project]
 project_id = "cqnahwnnqzraqcslljaz"
+
+[db]
+host = "db.cqnahwnnqzraqcslljaz.supabase.co"
+port = 5432
+dbname = "postgres"

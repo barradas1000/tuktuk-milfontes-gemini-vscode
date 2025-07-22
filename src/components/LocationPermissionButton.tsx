@@ -38,22 +38,20 @@ export const LocationPermissionButton: React.FC<
       return;
     }
 
-    getLocation();
+    // A lógica de `getLocation` já está no hook, mas vamos redefini-la aqui
+    // para incluir os callbacks diretamente.
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                onLocationGranted?.(pos as CustomGeolocationPosition);
+            },
+            () => {
+                onLocationDenied?.();
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
   };
-
-  // Callback quando a localização é obtida
-  React.useEffect(() => {
-    if (position && onLocationGranted) {
-      onLocationGranted(position);
-    }
-  }, [position, onLocationGranted]);
-
-  // Callback quando há erro
-  React.useEffect(() => {
-    if (error && onLocationDenied) {
-      onLocationDenied();
-    }
-  }, [error, onLocationDenied]);
 
   const getButtonText = () => {
     if (isLoading) return "📍 Localizando...";

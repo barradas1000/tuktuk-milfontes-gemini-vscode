@@ -12,7 +12,7 @@ export const LocationDebug: React.FC<LocationDebugProps> = ({
   const { position, error, permission, isLoading, isSupported } =
     useGeolocation();
   const [showDebug, setShowDebug] = useState(false);
-  const [tuktukPosition] = useState<Coordinates>({ lat: 37.725, lng: -8.783 });
+  const [tuktukPosition] = useState<Coordinates>({ lat: 37.889, lng: -8.785 }); // 📍 CORRIGIDO: Coordenadas reais
 
   const calculateDistanceToTuktuk = () => {
     if (!position) return null;

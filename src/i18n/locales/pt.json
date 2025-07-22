@@ -1,4 +1,4 @@
-{
+ {
   "hero": {
     "title": "Descubra Milfontes com Estilo",
     "subtitle": "Aventuras de Tuk-Tuk pela Costa Vicentina",
@@ -367,7 +367,7 @@
     "restauranteHSBeach": "Um restaurante com vista para o mar, que serve uma variedade de pratos, incluindo marisco fresco.",
     "mercadoMilfontes": "Um mercado tradicional onde se pode encontrar produtos frescos locais e artesanato.",
     "mercadoBrunheiras": "Outro mercado local que oferece uma variedade de frutas, legumes e outros produtos da região.",
-    "milsuper": "Um supermercado que oferece uma vasta gama de produtos para as necessidades diárias.",
+    "milsuper": "Um supermercado que oferece uma gama completa de produtos alimentares e de mercearia.",
     "meuSuper": "Um supermercado de conveniência, ideal para compras rápidas e essenciais.",
     "amanhecer": "Um estabelecimento especializado em frutas e legumes frescos, com uma seleção variada.",
     "supermercadoSPAR": "Um supermercado que oferece uma gama completa de produtos alimentares e de mercearia.",
@@ -386,5 +386,14 @@
   "aerialViewMilfontes": {
     "title": "Vista Aérea de Milfontes",
     "description": "Vista aérea numa tarde de Inverno sobre Vila Nova de Milfontes, Alentejo - Portugal."
+  },
+  "errors": {
+    "geolocationNotSupported": "Geolocalização não suportada",
+    "geolocationNotSupportedMessage": "Seu navegador não suporta geolocalização. Por favor, use um navegador moderno ou ative a localização manualmente.",
+    "mapError": "Erro ao carregar o mapa",
+    "locationDenied": "Permissão de localização negada"
+  },
+  "loading": {
+    "takingTooLong": "Está demorando muito? Verifique sua conexão com a internet."
   }
 }

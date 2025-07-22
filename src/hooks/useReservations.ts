@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useCallback } from "react"; // Importação explícita do useCallback
 
 export interface Reservation {
   id?: string;
@@ -25,46 +26,53 @@ export interface AvailableSlot {
   reserved: number;
 }
 
+export interface TourType {
+  id: string;
+  name: string;
+  base_price: number;
+  duration_minutes: number;
+}
+
+const DEFAULT_TOUR_TYPES: TourType[] = [
+  {
+    id: "1",
+    name: "Passeio panorâmico pela vila",
+    base_price: 10,
+    duration_minutes: 60,
+  },
+  {
+    id: "2",
+    name: "Vila Nova de Milfontes → Praia das Furnas",
+    base_price: 14,
+    duration_minutes: 90,
+  },
+  {
+    id: "3",
+    name: "Travessia pela ponte",
+    base_price: 10,
+    duration_minutes: 45,
+  },
+];
+
 export const useReservations = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch reservations for a specific date
-  const getReservationsForDate = async (date: string) => {
-    const { data, error } = await (supabase as any)
-      .from("reservations")
-      .select("*")
-      .eq("reservation_date", date)
-      .neq("status", "cancelled");
-
-    if (error) {
-      console.error("Error fetching reservations:", error);
-      return [];
-    }
-
-    return data || [];
-  };
-
-  // Check availability for a specific date
-  const { data: availability, isLoading: availabilityLoading } = useQuery({
+  const { data: availability, isLoading: availabilityLoading, error: availabilityError } = useQuery<AvailableSlot[], Error>({
     queryKey: ["availability"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("tuk_tuk_availability")
         .select("*");
 
       if (error) {
-        console.error("Error fetching availability:", error);
-        return [];
+        throw new Error(`Erro ao buscar disponibilidade: ${error.message}`);
       }
-
       return data || [];
     },
   });
 
-  // Get available time slots for a specific date
-  const getAvailableSlots = async (date: string): Promise<AvailableSlot[]> => {
-    const reservations = await getReservationsForDate(date);
+  const getAvailableSlots = useCallback((date: string, reservations: Reservation[]): AvailableSlot[] => {
     const timeSlots = [
       "09:00",
       "10:30",
@@ -77,10 +85,10 @@ export const useReservations = () => {
 
     return timeSlots.map((time) => {
       const slotReservations = reservations.filter(
-        (r: any) => r.reservation_time === time && r.status !== "cancelled"
+        (r) => r.reservation_time === time && r.status !== "cancelled"
       );
       const reserved = slotReservations.reduce(
-        (sum: number, r: any) => sum + r.number_of_people,
+        (sum, r) => sum + (r.number_of_people || 0),
         0
       );
 
@@ -91,49 +99,40 @@ export const useReservations = () => {
         reserved,
       };
     });
-  };
+  }, []);
 
-  // Create a new reservation
-  const createReservationMutation = useMutation({
-    mutationFn: async (reservationData: Reservation[]) => {
-      console.log("Creating reservations:", reservationData);
-
-      const { data, error } = await (supabase as any)
+  const createReservationMutation = useMutation<Reservation[], Error, Reservation>({
+    mutationFn: async (reservationData: Reservation) => {
+      const { data, error } = await supabase
         .from("reservations")
-        .insert(reservationData)
+        .insert([reservationData]) // Garantir que seja uma lista para o Supabase
         .select();
 
       if (error) {
-        console.error("Error creating reservation:", error);
-        throw error;
+        throw new Error(`Erro ao criar reserva: ${error.message}`);
       }
 
       return data;
     },
     onSuccess: (data) => {
-      console.log("Reservations created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
 
       const reservationCount = data?.length || 0;
       const totalPeople =
         data?.reduce(
-          (sum: number, r: any) => sum + (r?.number_of_people || 0),
+          (sum: number, r: Reservation) => sum + (r.number_of_people || 0),
           0
         ) || 0;
       const totalPrice =
-        data?.reduce((sum: number, r: any) => sum + (r?.total_price || 0), 0) ||
+        data?.reduce((sum: number, r: Reservation) => sum + (r.total_price || 0), 0) ||
         0;
-      const tourType = data?.[0]?.tour_type || "";
-      const reservationDate = data?.[0]?.reservation_date || "";
-      const reservationTime = data?.[0]?.reservation_time || "";
 
       toast({
         title: "Reserva criada com sucesso!",
         description: `${reservationCount} reserva(s) para ${totalPeople} pessoa(s) - €${totalPrice}`,
       });
     },
-    onError: (error: any) => {
-      console.error("Error creating reservation:", error);
+    onError: (error: Error) => {
       toast({
         title: "Erro ao criar reserva",
         description: error.message || "Tente novamente mais tarde",
@@ -142,42 +141,19 @@ export const useReservations = () => {
     },
   });
 
-  // Get tour types
-  const { data: tourTypes, isLoading: tourTypesLoading } = useQuery({
+  const { data: tourTypes, isLoading: tourTypesLoading, error: tourTypesError } = useQuery<TourType[], Error>({
     queryKey: ["tourTypes"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("tour_types")
         .select("*")
         .eq("is_active", true)
         .order("name");
 
       if (error) {
-        console.error("Error fetching tour types:", error);
-        // Return default tour types if there's an error
-        return [
-          {
-            id: "1",
-            name: "Passeio panorâmico pela vila",
-            base_price: 10,
-            duration_minutes: 60,
-          },
-          {
-            id: "2",
-            name: "Vila Nova de Milfontes → Praia das Furnas",
-            base_price: 14,
-            duration_minutes: 90,
-          },
-          {
-            id: "3",
-            name: "Travessia pela ponte",
-            base_price: 10,
-            duration_minutes: 45,
-          },
-        ];
+        throw new Error(`Erro ao buscar tipos de passeio: ${error.message}`);
       }
-
-      return data || [];
+      return data || DEFAULT_TOUR_TYPES;
     },
   });
 
@@ -189,6 +165,5 @@ export const useReservations = () => {
     createReservation: createReservationMutation.mutate,
     isCreatingReservation: createReservationMutation.isPending,
     getAvailableSlots,
-    getReservationsForDate,
   };
 };

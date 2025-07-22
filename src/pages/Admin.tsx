@@ -7,14 +7,24 @@ import { Button } from "@/components/ui/button";
 
 const Admin = () => {
   console.log("Admin page component rendering...");
+
   const navigate = useNavigate();
   const { user, loading, isAdmin, signOut } = useAuth();
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
+    console.log(
+      "Admin useEffect triggered. Loading:",
+      loading,
+      "User:",
+      user?.email,
+      "IsAdmin:",
+      isAdmin
+    );
     if (!loading) {
       if (!user) {
-        console.log("No user found, redirecting to auth");
-        navigate("/auth");
+        console.log("No user found, redirecting to login");
+        navigate("/login");
       } else if (!isAdmin) {
         console.log("User is not admin, access denied");
         // You could redirect to a "not authorized" page or show an error
@@ -39,15 +49,28 @@ const Admin = () => {
   }
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/login");
+    setLogoutLoading(true);
+    try {
+      await signOut();
+      console.log("Logout realizado com sucesso");
+      navigate("/login");
+    } catch (err) {
+      console.error("Erro ao terminar sessão:", err);
+      alert("Erro ao terminar sessão. Veja o console.");
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   return (
     <div className="relative min-h-screen">
       <div className="absolute top-4 right-4 z-10">
-        <Button variant="outline" onClick={handleLogout}>
-          Terminar Sessão
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          disabled={logoutLoading}
+        >
+          {logoutLoading ? "A terminar..." : "Terminar Sessão"}
         </Button>
       </div>
 

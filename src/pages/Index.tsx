@@ -151,7 +151,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Language Selector */}
       <LanguageSelector />
 
@@ -169,8 +169,8 @@ const Index = () => {
           }}
         ></div>
 
-        <div className="relative z-10 text-center px-4 max-w-6xl mx-auto">
-          <div className="animate-fade-in">
+        <div className="relative z-10 text-center px-4 w-full">
+          <div className="animate-fade-in max-w-7xl mx-auto">
             {/* Logo Section */}
             <div className="mb-8 flex justify-center">
               <div className="w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-full border-4 border-amber-400 shadow-2xl bg-white/90 backdrop-blur-sm p-2 hover:scale-105 transition-transform duration-300">
@@ -236,8 +236,8 @@ const Index = () => {
       </section>
 
       {/* Benefits Section */}
-      <section id="about" className="py-20 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
+      <section id="about" className="py-20 px-4 bg-white w-full">
+        <div className="w-full max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-blue-900 mb-6">
               {t("benefits.title")}{" "}
@@ -560,7 +560,10 @@ const Index = () => {
       </section>
 
       {/* TukTuk Tracking Button Section */}
-      <section id="tuktuk-tracking-section" className="py-12 px-4 bg-gradient-to-br from-amber-50 to-blue-50">
+      <section
+        id="tuktuk-tracking-section"
+        className="py-12 px-4 bg-gradient-to-br from-amber-50 to-blue-50"
+      >
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-2xl md:text-3xl font-bold text-blue-900 mb-4">
             {t("tuktukTracking.title")}

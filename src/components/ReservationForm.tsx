@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,13 +26,9 @@ import { mockBlockedPeriods } from "@/data/mockReservations";
 import { checkAvailability } from "@/services/availabilityService";
 import AlternativeTimesModal from "./AlternativeTimesModal";
 import { Badge } from "@/components/ui/badge";
-import { fetchActiveConductors } from "@/services/supabaseService";
+import { useConductorsWithPermissions } from "@/hooks/useConductorsWithPermissions";
 
-const allConductors = [
-  { id: "condutor1", whatsapp: "351963496320" },
-  { id: "condutor2", whatsapp: "351968784043" },
-  // ... outros condutores, se existirem
-];
+// ✅ REMOVIDO: allConductors hardcoded - agora vem do useConductors hook
 
 // Função para interpolar variáveis na mensagem
 function interpolateMessage(
@@ -48,6 +44,16 @@ function interpolateMessage(
 const ReservationForm = () => {
   console.log("ReservationForm rendering");
   const { t } = useTranslation();
+
+  // ✅ MODERNIZADO: Usar hook profissional useConductorsWithPermissions
+  // ✅ Elimina: fetchActiveConductors manual + async/await
+  const {
+    conductors,
+    activeConductors,
+    isLoadingActive,
+    getConductorById,
+    isConductorActive,
+  } = useConductorsWithPermissions();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -76,6 +82,7 @@ const ReservationForm = () => {
     existingPeople: 0,
     maxCapacity: 1,
     message: "",
+    alternativeTimes: [] as string[],
   });
 
   const { toast } = useToast();
@@ -258,18 +265,18 @@ const ReservationForm = () => {
       return;
     }
 
-    // Buscar condutor ativo
+    // ✅ MODERNIZADO: Usar hook useConductorsWithPermissions em vez de fetchActiveConductors manual
+    // ✅ Elimina: async/await + try/catch + busca manual
     let phoneNumber = "351968784043"; // fallback
-    try {
-      const activeConductors = await fetchActiveConductors(); // retorna array de IDs
-      if (activeConductors.length > 0) {
-        const conductor = allConductors.find(
-          (c) => c.id === activeConductors[0]
-        );
-        if (conductor) phoneNumber = conductor.whatsapp;
+
+    if (conductors.length > 0) {
+      // Buscar condutor ativo com WhatsApp
+      const activeConductor = conductors.find(
+        (conductor) => conductor.is_active && conductor.whatsapp
+      );
+      if (activeConductor) {
+        phoneNumber = activeConductor.whatsapp;
       }
-    } catch (e) {
-      // fallback já definido
     }
 
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
@@ -298,7 +305,7 @@ const ReservationForm = () => {
     setAvailabilityInfo((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const checkAvailabilityInRealTime = async () => {
+  const checkAvailabilityInRealTime = useCallback(async () => {
     if (!formData.date || !formData.time || !formData.numberOfPeople) {
       setAvailabilityStatus({
         isChecking: false,
@@ -306,6 +313,7 @@ const ReservationForm = () => {
         existingPeople: 0,
         maxCapacity: 4,
         message: "",
+        alternativeTimes: [],
       });
       return;
     }
@@ -325,6 +333,7 @@ const ReservationForm = () => {
         existingPeople: availability.existingReservations,
         maxCapacity: availability.maxCapacity,
         message: availability.message,
+        alternativeTimes: availability.alternativeTimes || [],
       });
     } catch (error) {
       setAvailabilityStatus({
@@ -333,9 +342,10 @@ const ReservationForm = () => {
         existingPeople: 0,
         maxCapacity: 4,
         message: "Erro ao verificar disponibilidade",
+        alternativeTimes: [],
       });
     }
-  };
+  }, [formData.date, formData.time, formData.numberOfPeople]);
 
   // Verificar disponibilidade quando mudar data, hora, número de pessoas OU tipo de tour
   React.useEffect(() => {
@@ -352,6 +362,7 @@ const ReservationForm = () => {
         existingPeople: 0,
         maxCapacity: 1,
         message: "",
+        alternativeTimes: [],
       });
       return;
     }
@@ -364,6 +375,7 @@ const ReservationForm = () => {
     formData.time,
     formData.numberOfPeople,
     formData.tourType,
+    checkAvailabilityInRealTime,
   ]);
 
   // Abrir o modal de sugestão imediatamente após a verificação de disponibilidade, se necessário
@@ -385,7 +397,13 @@ const ReservationForm = () => {
         alternativeTimes: availabilityStatus.alternativeTimes,
       });
     }
-  }, [availabilityStatus, formData.tourType]);
+  }, [
+    availabilityStatus,
+    formData.tourType,
+    formData.date,
+    formData.numberOfPeople,
+    formData.time,
+  ]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

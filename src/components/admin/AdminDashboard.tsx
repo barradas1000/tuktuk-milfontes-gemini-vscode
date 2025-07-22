@@ -17,11 +17,14 @@ import {
   Mail,
   Database,
   Info,
+  FileText,
 } from "lucide-react";
 import { useAdminReservations } from "@/hooks/useAdminReservations";
 import AdminCalendar from "./AdminCalendar";
 import AdminReservationsList from "./AdminReservationsList";
 import AdminReports from "./AdminReports";
+import CandidaturaAdminDashboard from "./CandidaturaAdminDashboard";
+import NotificationBadge from "./NotificationBadge";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -93,6 +96,9 @@ const AdminDashboard = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              {/* Badge de Notificações */}
+              <NotificationBadge className="self-end sm:self-auto" />
+
               {/* Relógio responsivo */}
               <div className="flex items-center gap-2 text-xs sm:text-sm font-mono bg-blue-50 px-3 py-2 sm:px-4 sm:py-3 rounded-lg border border-blue-200 shadow-sm w-full sm:w-auto justify-center">
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
@@ -133,6 +139,13 @@ const AdminDashboard = () => {
             <TabsTrigger value="calendar" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Calendário
+            </TabsTrigger>
+            <TabsTrigger
+              value="candidaturas"
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Candidaturas
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -243,6 +256,9 @@ const AdminDashboard = () => {
                 selectedDate={selectedDate}
                 onDateSelect={setSelectedDate}
               />
+            </TabsContent>
+            <TabsContent value="candidaturas">
+              <CandidaturaAdminDashboard adminLevel="super_admin" />
             </TabsContent>
             <TabsContent value="analytics">
               <AdminReports />

@@ -1,88 +1,243 @@
-import { Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
+import { Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@/hooks/useAuth";
-import Index from "./pages/Index";
+import { usePerformanceMonitoring } from "@/utils/performanceMonitor";
+import { registerServiceWorker } from "@/utils/serviceWorkerManager";
+import "./App.css"; // Importação do CSS do App
+
+// Lazy loading para todas as páginas
+const Index = lazy(() => import("./pages/Index"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Auth = lazy(() => import("./pages/Auth"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Instrucoes = lazy(() => import("./pages/Instrucoes"));
-import TermosCondicoes from "./pages/TermosCondicoes";
-import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
-import PoliticaCancelamento from "./pages/PoliticaCancelamento";
-import DriverDashboard from "./pages/DriverDashboard";
-import PassengerView from "./pages/PassengerView";
+const TermosCondicoes = lazy(() => import("./pages/TermosCondicoes"));
+const PoliticaPrivacidade = lazy(() => import("./pages/PoliticaPrivacidade"));
+const PoliticaCancelamento = lazy(() => import("./pages/PoliticaCancelamento"));
+const PassengerView = lazy(() => import("./pages/PassengerView"));
+const ConductorDashboard = lazy(() => import("./pages/ConductorDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const CandidaturaPublicaPage = lazy(
+  () => import("./pages/CandidaturaPublicaPage")
+);
+const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
+
 import "./i18n";
 
 const queryClient = new QueryClient();
 
+// Componente de fallback reutilizável
+const LoadingFallback = ({
+  message = "Carregando...",
+}: {
+  message?: string;
+}) => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      {message}
+    </div>
+  </div>
+);
+
+// Componente principal da aplicação
+const AppContent = () => {
+  const { startMonitoring } = usePerformanceMonitoring();
+
+  useEffect(() => {
+    // Iniciar monitoramento de performance apenas em desenvolvimento
+    if (import.meta.env.DEV) {
+      startMonitoring();
+    }
+
+    // Registrar Service Worker em produção
+    if (import.meta.env.PROD) {
+      registerServiceWorker();
+    }
+  }, [startMonitoring]);
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando página inicial..." />
+            }
+          >
+            <Index />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando painel administrativo..." />
+            }
+          >
+            <Admin />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/instrucoes"
+        element={
+          <Suspense
+            fallback={<LoadingFallback message="Carregando instruções..." />}
+          >
+            <Instrucoes />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando página de login..." />
+            }
+          >
+            <Auth />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando redefinição de senha..." />
+            }
+          >
+            <ResetPassword />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/termos-condicoes"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando termos e condições..." />
+            }
+          >
+            <TermosCondicoes />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/PoliticaPrivacidade"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando política de privacidade..." />
+            }
+          >
+            <PoliticaPrivacidade />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/PoliticaCancelamento"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando política de cancelamento..." />
+            }
+          >
+            <PoliticaCancelamento />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/tracking"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando mapa de tracking..." />
+            }
+          >
+            <PassengerView />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/candidatura-condutor"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando formulário de candidatura..." />
+            }
+          >
+            <CandidaturaPublicaPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/condutor/dashboard/:conductorId?"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando proteção de rota..." />
+            }
+          >
+            <ProtectedRoute allowedRoles={["condutor", "admin"]}>
+              <Suspense
+                fallback={
+                  <LoadingFallback message="Carregando painel do condutor..." />
+                }
+              >
+                <ConductorDashboard />
+              </Suspense>
+            </ProtectedRoute>
+          </Suspense>
+        }
+      />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando proteção de rota..." />
+            }
+          >
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Suspense
+                fallback={
+                  <LoadingFallback message="Carregando painel do administrador..." />
+                }
+              >
+                <AdminDashboard />
+              </Suspense>
+            </ProtectedRoute>
+          </Suspense>
+        }
+      />
+      <Route
+        path="*"
+        element={
+          <Suspense fallback={<LoadingFallback />}>
+            <NotFound />
+          </Suspense>
+        }
+      />
+    </Routes>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route
-              path="/admin"
-              element={
-                <Suspense fallback={<div>Carregando...</div>}>
-                  <Admin />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/instrucoes"
-              element={
-                <Suspense fallback={<div>Carregando...</div>}>
-                  <Instrucoes />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/login"
-              element={
-                <Suspense fallback={<div>Carregando...</div>}>
-                  <Auth />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/reset-password"
-              element={
-                <Suspense fallback={<div>Carregando...</div>}>
-                  <ResetPassword />
-                </Suspense>
-              }
-            />
-            <Route path="/TermosCondicoes" element={<TermosCondicoes />} />
-            <Route
-              path="/PoliticaPrivacidade"
-              element={<PoliticaPrivacidade />}
-            />
-            <Route
-              path="/PoliticaCancelamento"
-              element={<PoliticaCancelamento />}
-            />
-            <Route path="/driver" element={<DriverDashboard />} />
-            <Route path="/tracking" element={<PassengerView />} />
-            <Route
-              path="*"
-              element={
-                <Suspense fallback={<div>Carregando...</div>}>
-                  <NotFound />
-                </Suspense>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+      <Toaster />
+      <Sonner />
+      <AppContent />
     </TooltipProvider>
   </QueryClientProvider>
 );

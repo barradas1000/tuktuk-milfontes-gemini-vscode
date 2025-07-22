@@ -55,11 +55,13 @@ function compareTimes(a: string, b: string): number {
 }
 
 // Função para encontrar o próximo horário disponível entre serviços
+import { AdminReservation } from "@/types/adminReservations";
+
 function findNextAvailableTime(
   date: string,
   requestedTime: string,
   duration: number,
-  existingReservations: any[]
+  existingReservations: AdminReservation[]
 ): string | null {
   // Ordenar reservas por hora de início
   const sorted = existingReservations
@@ -134,7 +136,7 @@ export const checkAvailability = async (
 ): Promise<AvailabilityCheck> => {
   const isConfigured = checkSupabaseConfiguration();
   try {
-    let existingReservations: any[] = [];
+    let existingReservations: AdminReservation[] = [];
     if (isConfigured) {
       const { data, error } = await supabase
         .from("reservations")
@@ -230,7 +232,7 @@ export const generateAlternativeTimes = async (
   const alternatives: string[] = [];
   try {
     const timeSlots = generateDynamicTimeSlots();
-    let existingReservations: any[] = [];
+    let existingReservations: AdminReservation[] = [];
     if (isConfigured) {
       const { data } = await supabase
         .from("reservations")

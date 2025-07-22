@@ -1,36 +1,13 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PassengerMap from "../components/PassengerMap";
 import LanguageSelector from "@/components/LanguageSelector";
-import { DndProvider, useDrag, useDrop } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
-
-const DraggableCard: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: "CARD",
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
-
-  return (
-    <div
-      ref={drag}
-      style={{
-        opacity: isDragging ? 0.5 : 1,
-        cursor: "move",
-      }}
-    >
-      {children}
-    </div>
-  );
-};
 
 const PassengerView: React.FC = () => {
   const { t } = useTranslation();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Language Selector */}
@@ -52,20 +29,18 @@ const PassengerView: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DndProvider backend={HTML5Backend}>
-          <DraggableCard>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {t("tuktukTracking.currentLocation")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PassengerMap />
-              </CardContent>
-            </Card>
-          </DraggableCard>
-        </DndProvider>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {t("tuktukTracking.currentLocation")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <React.Suspense fallback={<div className="text-center">{t('loading.tukTukLocation')}</div>}>
+              <PassengerMap />
+            </React.Suspense>
+          </CardContent>
+        </Card>
 
         {/* Informações */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
@@ -120,7 +95,7 @@ const PassengerView: React.FC = () => {
               <CardTitle className="text-lg">{t("tuktukTracking.contact")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-gray-600">
-              <div>• {t("tuktukTracking.contactItems.phone")}</div>
+              <div>• {t("tuktukTracking.contactItems.phone tâm")}</div>
               <div>• {t("tuktukTracking.contactItems.whatsapp")}</div>
               <div>• {t("tuktukTracking.contactItems.email")}</div>
             </CardContent>
@@ -129,12 +104,12 @@ const PassengerView: React.FC = () => {
 
         {/* Link para reserva */}
         <div className="text-center mt-8">
-          <a
-            href="/"
+          <Link
+            to="/"
             className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
           >
             ← {t("tuktukTracking.backToMain")}
-          </a>
+          </Link>
         </div>
       </div>
     </div>

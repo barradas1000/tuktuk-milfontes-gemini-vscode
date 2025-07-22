@@ -1,320 +1,303 @@
-// src/components/PassengerMap.tsx
-import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { useTranslation } from 'react-i18next';
-import { supabase } from '../lib/supabase';
-import { UserLocationMarker } from './UserLocationMarker';
-import { LocationPermissionButton } from './LocationPermissionButton';
-import { DistanceCalculator } from './DistanceCalculator';
-import { LocationDebug } from './LocationDebug';
-import { Coordinates } from '../utils/locationUtils';
-import DraggableDistanceCard from './DraggableDistanceCard';
+import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+} from "react-leaflet";
+import L from "leaflet";
+import { UserLocationMarker } from "./UserLocationMarker";
+import { LocationPermissionButton } from "./LocationPermissionButton";
+import { LocationDebug } from "./LocationDebug";
+import { useConductorsWithPermissions } from "@/hooks/useConductorsWithPermissions";
+import { Coordinates } from "../types/supabase";
+import "leaflet/dist/leaflet.css";
+import tukTukIcon from "../assets/tuktuk-icon.png";
 
-// Ícones Leaflet
-import iconUrl from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import tukTukIconUrl from '../assets/tuktuk-icon.png';
-import userIconUrl from '../assets/user-icon.png';
-
-const DefaultIcon = L.icon({
-  iconUrl,
-  shadowUrl: iconShadow,
-  iconAnchor: [12, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const TukTukIcon = L.icon({
-  iconUrl: tukTukIconUrl,
+const TukTukIcon = new L.Icon({
+  iconUrl: tukTukIcon,
   iconSize: [40, 40],
   iconAnchor: [20, 40],
   popupAnchor: [0, -40],
 });
-
-const UserIcon = L.icon({
-  iconUrl: userIconUrl,
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
-});
-
-interface DriverLocation {
-  id: string;
-  lat: number;
-  lng: number;
-  isActive: boolean;
-  name: string;
-}
-
-const MapController: React.FC<{
-  userPosition: Coordinates | null;
-  driverLocation: DriverLocation | null;
-  userInteracted: boolean;
-}> = ({ userPosition, driverLocation, userInteracted }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (userPosition && driverLocation?.isActive && !userInteracted) {
-      const bounds = L.latLngBounds([
-        [userPosition.lat, userPosition.lng],
-        [driverLocation.lat, driverLocation.lng],
-      ]);
-      map.fitBounds(bounds, { padding: [20, 20] });
-    } else if (userPosition && !userInteracted) {
-      map.setView([userPosition.lat, userPosition.lng], 15);
-    } else if (driverLocation?.isActive && !userInteracted) {
-      map.setView([driverLocation.lat, driverLocation.lng], 14);
-    }
-  }, [userPosition, driverLocation, map, userInteracted]);
-
-  return null;
-};
-
-const DISTANCIA_ALERTA_METROS = 50;
-const VELOCIDADE_MEDIA_KMH = 20;
 
 const PassengerMap: React.FC = () => {
   const { t } = useTranslation();
-  const [activeDrivers, setActiveDrivers] = useState<DriverLocation[]>([]);
+
+  // 🎯 MODERNIZAÇÃO: Usar hook profissional useConductorsWithPermissions
+  // ✅ Elimina: useState + useEffect + fetchActiveConductors manual
+  // ✅ Adiciona: Cache unificado + optimistic updates + error recovery
+  const {
+    conductors, // ← Todos os condutores (cache React Query)
+    isLoading, // ← Estado centralizado
+    error, // ← Error handling automático
+    isConductorActive, // ← Helper function
+  } = useConductorsWithPermissions();
+
+  // 🎯 CONDUTORES ATIVOS: Calculado automaticamente do cache
+  // ✅ Substitui: useState([]) + setActiveConductors manual
+  const activeConductors = conductors
+    .filter((c) => isConductorActive(c.id) && c.latitude && c.longitude)
+    .map((c) => ({
+      id: c.id,
+      lat: c.latitude || 37.889, // ← 📍 CORRIGIDO: Coordenadas reais Vila Nova de Milfontes
+      lng: c.longitude || -8.785, // ← 📍 CORRIGIDO: Próximo dos condutores ativos
+      isActive: true,
+      name: c.name || "TukTuk",
+    }));
+
   const [userPosition, setUserPosition] = useState<Coordinates | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showUserLocation, setShowUserLocation] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const [userInteracted, setUserInteracted] = useState(false);
-  const [cardPosition, setCardPosition] = useState(() => {
-    const saved = localStorage.getItem('cardPos');
-    return saved ? JSON.parse(saved) : { x: 16, y: 16 };
-  });
+  const [buttonPosition, setButtonPosition] = useState({ x: 20, y: 20 });
+  const [dragging, setDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
-  const calcularDistanciaMetros = (
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number
-  ) => {
-    const toRad = (x: number) => (x * Math.PI) / 180;
-    const R = 6371000;
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+  const isGeolocationSupported =
+    typeof navigator !== "undefined" && "geolocation" in navigator;
+
+  // 🎯 REMOVIDO: fetchActiveConductors + useEffect + real-time manual
+  // ✅ AGORA: useConductorsWithPermissions hook faz tudo automaticamente
+  // - Cache inteligente via React Query
+  // - Real-time via background refresh (60s)
+  // - Optimistic updates + error recovery
+  // - Invalidação automática quando necessário
+
+  // Center map based on user position or conductors
+  useEffect(() => {
+    if (!userInteracted && mapRef.current) {
+      if (userPosition && activeConductors.length > 0) {
+        const bounds = L.latLngBounds([
+          [userPosition.lat, userPosition.lng] as L.LatLngTuple,
+          ...activeConductors.map((c) => [c.lat, c.lng] as L.LatLngTuple),
+        ]);
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      } else if (userPosition) {
+        mapRef.current.setView([userPosition.lat, userPosition.lng], 15);
+      } else if (activeConductors.length > 0) {
+        const bounds = L.latLngBounds(
+          activeConductors.map((c) => [c.lat, c.lng] as L.LatLngTuple)
+        );
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+  }, [userPosition, activeConductors, userInteracted]);
+
+  const MapEvents = () => {
+    useMapEvents({
+      dragstart: () => setUserInteracted(true),
+    });
+    return null;
   };
 
-  useEffect(() => {
-    const fetchActiveDrivers = async () => {
-      try {
-        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-          setActiveDrivers([]);
-          setLoading(false);
-          return;
-        }
-        const { data, error } = await supabase
-          .from('drivers')
-          .select('*')
-          .eq('is_active', true);
-        if (error) {
-          setActiveDrivers([]);
-        } else {
-          setActiveDrivers(
-            data.map((d: any) => ({
-              id: d.id,
-              lat: d.latitude || 37.725,
-              lng: d.longitude || -8.783,
-              isActive: d.is_active,
-              name: d.name || 'TukTuk',
-            }))
-          );
-        }
-      } catch {
-        setActiveDrivers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchActiveDrivers();
-
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      const channel = supabase
-        .channel('driver_location')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers' }, (payload) => {
-          const newData = payload.new as any;
-          setActiveDrivers((prev) => {
-            const filtered = prev.filter((d) => d.id !== newData.id);
-            if (newData.is_active) {
-              return [
-                ...filtered,
-                {
-                  id: newData.id,
-                  lat: newData.latitude || 37.725,
-                  lng: newData.longitude || -8.783,
-                  isActive: true,
-                  name: newData.name || 'TukTuk',
-                },
-              ];
-            }
-            return filtered;
-          });
-        })
-        .subscribe();
-      return () => supabase.removeChannel(channel);
-    }
-  }, []);
-
   const handleLocationGranted = (position: GeolocationPosition) => {
-    setUserPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
+    setUserPosition({
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    });
     setShowUserLocation(true);
+    setUserInteracted(false);
   };
 
   const handleLocationDenied = () => {
     setShowUserLocation(false);
     setUserPosition(null);
+    // ✅ MODERNIZADO: Usar error do useConductorsWithPermissions se necessário
+    // setError(t("errors.locationDenied")); // Removido estado local
   };
 
-  const handleMapReady = (map: L.Map) => {
-    mapRef.current = map;
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    setDragging(true);
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    dragOffset.current = {
+      x: clientX - buttonPosition.x,
+      y: clientY - buttonPosition.y,
+    };
   };
 
-  const handleRecenter = () => setUserInteracted(false);
+  const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    if (dragging) {
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+      const buttonWidth = 100; // Ajuste conforme o tamanho do botão
+      const buttonHeight = 40;
+      setButtonPosition({
+        x: Math.max(
+          0,
+          Math.min(
+            window.innerWidth - buttonWidth,
+            clientX - dragOffset.current.x
+          )
+        ),
+        y: Math.max(
+          0,
+          Math.min(
+            window.innerHeight - buttonHeight,
+            clientY - dragOffset.current.y
+          )
+        ),
+      });
+    }
+  };
 
-  if (loading) {
+  const handleDragEnd = () => {
+    setDragging(false);
+  };
+
+  const handleRecenter = () => {
+    setUserInteracted(false);
+  };
+
+  if (!isGeolocationSupported) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div>
+      <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg shadow-inner text-center">
+        <div className="text-3xl mb-2">⚠️</div>
+        <h3 className="text-lg font-semibold text-gray-700">
+          {t("errors.geolocationNotSupported")}
+        </h3>
+        <p className="text-sm text-gray-500 max-w-xs">
+          {t("errors.geolocationNotSupportedMessage")}
+        </p>
       </div>
     );
   }
 
-  const distance =
-    userPosition && activeDrivers[0]
-      ? calcularDistanciaMetros(
-          userPosition.lat,
-          userPosition.lng,
-          activeDrivers[0].lat,
-          activeDrivers[0].lng
-        )
-      : null;
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg shadow-inner text-center">
+        <div className="text-3xl mb-2">⚠️</div>
+        <h3 className="text-lg font-semibold text-gray-700">
+          {t("errors.mapError")}
+        </h3>
+        <p className="text-sm text-gray-500 max-w-xs">{error.message}</p>
+      </div>
+    );
+  }
 
-  const time =
-    distance !== null
-      ? Math.round(distance / ((VELOCIDADE_MEDIA_KMH * 1000) / 3600) / 60)
-      : null;
+  // 🎯 MODERNIZADO: Usar isLoading do useConductorsWithPermissions hook
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p>{t("loading.tukTukLocation")}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {t("loading.takingTooLong")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 🎯 CONDUTORES ATIVOS: Agora calculado do cache React Query
+  if (activeConductors.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg shadow-inner text-center">
+        <div className="text-3xl mb-2">😢</div>
+        <h3 className="text-lg font-semibold text-gray-700">
+          {t("errors.noTukTuksTitle")}
+        </h3>
+        <p className="text-sm text-gray-500 max-w-xs">
+          {t("errors.noTukTuksMessage")}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
         <MapContainer
-          center={[37.725, -8.783]}
+          center={[37.889, -8.785]} // 📍 CORRIGIDO: Centro próximo aos condutores reais
           zoom={14}
-          style={{ height: '100%', width: '100%' }}
-          ref={handleMapReady}
+          style={{ height: "100%", width: "100%" }}
+          ref={mapRef}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-          {activeDrivers[0] && (
-            <Marker position={[activeDrivers[0].lat, activeDrivers[0].lng]} icon={TukTukIcon}>
-              <Popup>
-                <div className="text-center">
-                  <h3 className="font-bold text-blue-600">{activeDrivers[0].name}</h3>
-                  <p className="text-sm text-gray-600">{t("mapControls.availableTukTuk")}</p>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-
-          {userPosition && (
-            <Marker 
-              position={[userPosition.lat, userPosition.lng]} 
-              icon={L.divIcon({
-                className: 'user-location-bounce',
-                html: `
-                  <div style="
-                    width: 40px; 
-                    height: 40px; 
-                    background-image: url('${userIconUrl}');
-                    background-size: contain;
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    animation: bounce 2s ease-in-out infinite;
-                    transform: translate(-50%, -50%);
-                  "></div>
-                  
-                  <style>
-                    @keyframes bounce {
-                      0%, 80%, 100% { 
-                        transform: translate(-50%, -50%) translateY(0px);
-                      }
-                      40% { 
-                        transform: translate(-50%, -50%) translateY(-15px);
-                      }
-                    }
-                  </style>
-                `,
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
-              })}
+          <MapEvents />
+          {activeConductors.map((conductor) => (
+            <Marker
+              key={conductor.id}
+              position={[conductor.lat, conductor.lng]}
+              icon={TukTukIcon}
             >
               <Popup>
                 <div className="text-center">
-                  <h3 className="font-bold text-green-600">👤 {t("mapControls.yourLocation")}</h3>
-                  <p className="text-sm text-gray-600">{t("mapControls.youAreHere")}</p>
+                  <h3 className="font-bold text-blue-600">{conductor.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {t("map.tukTukAvailable")}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {t("map.lastUpdate")}: {new Date().toLocaleTimeString()}
+                  </p>
                 </div>
               </Popup>
             </Marker>
-          )}
-
-          <MapController
-            userPosition={userPosition}
-            driverLocation={activeDrivers[0] || null}
-            userInteracted={userInteracted}
-          />
-
-          {showUserLocation && mapRef.current && (
+          ))}
+          {showUserLocation && userPosition && mapRef.current && (
             <UserLocationMarker
               map={mapRef.current}
-              onPositionChange={setUserPosition}
-              onError={handleLocationDenied}
+              position={userPosition}
               autoCenter={false}
               showAccuracy={true}
             />
           )}
         </MapContainer>
-
-        {/* Card arrastável com persistência */}
-        <DraggableDistanceCard
-          distance={distance}
-          time={time}
-          position={cardPosition}
-          onDrop={(offset) => {
-            setCardPosition((prev) => {
-              const newPos = { x: prev.x + offset.x, y: prev.y + offset.y };
-              localStorage.setItem('cardPos', JSON.stringify(newPos));
-              return newPos;
-            });
+        <div
+          style={{
+            position: "absolute",
+            left: buttonPosition.x,
+            top: buttonPosition.y,
+            zIndex: 1000,
+            touchAction: "none",
+            cursor: dragging ? "grabbing" : "grab",
           }}
-        />
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 items-start">
-        <LocationPermissionButton
-          onLocationGranted={handleLocationGranted}
-          onLocationDenied={handleLocationDenied}
-          showStatus={false}
+          onMouseDown={handleDragStart}
+          onMouseMove={handleDrag}
+          onMouseUp={handleDragEnd}
+          onTouchStart={handleDragStart}
+          onTouchMove={handleDrag}
+          onTouchEnd={handleDragEnd}
         >
-          {t("mapControls.locateMe")}
-        </LocationPermissionButton>
+          <LocationPermissionButton
+            onLocationGranted={handleLocationGranted}
+            onLocationDenied={handleLocationDenied}
+            showStatus={false}
+          >
+            {t("mapControls.locateMe")}
+          </LocationPermissionButton>
+        </div>
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition-colors"
           onClick={handleRecenter}
-          type="button"
+          className="absolute bottom-4 right-4 z-[1000] bg-white p-2 rounded-full shadow-lg hover:bg-gray-100 transition"
+          title={t("mapControls.recenter")}
         >
-          {t("mapControls.centerMap")}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-gray-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
         </button>
       </div>
-
       {import.meta.env.DEV && <LocationDebug />}
     </>
   );

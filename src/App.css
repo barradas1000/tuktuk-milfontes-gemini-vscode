@@ -1,8 +1,21 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
   text-align: center;
+}
+
+/* Aumentar a largura máxima de todos os containers */
+.max-w-6xl {
+  max-width: 95% !important; /* Usando 95% em vez de 100% para evitar conteúdo encostado nas bordas */
+  width: 95% !important;
+}
+
+@media (min-width: 1536px) {
+  .max-w-6xl {
+    max-width: 1536px !important; /* Em telas muito grandes, limitar para evitar linhas muito longas */
+  }
 }
 
 .logo {

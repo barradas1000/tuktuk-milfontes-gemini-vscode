@@ -1,81 +1,87 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "../lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
-interface ToggleTrackingButtonProps {
-  driverId: string;
+interface SimpleTrackingButtonProps {
+  conductorId: string;
 }
 
-const ToggleTrackingButton: React.FC<ToggleTrackingButtonProps> = ({
-  driverId,
+const SimpleTrackingButton: React.FC<SimpleTrackingButtonProps> = ({
+  conductorId,
 }) => {
   const [isTracking, setIsTracking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
+  const { toast } = useToast();
 
-  // Verificar estado inicial
+  // Verificar status inicial
   useEffect(() => {
-    const checkInitialStatus = async () => {
+    const checkStatus = async () => {
+      if (!conductorId) return;
+
       try {
         const { data, error } = await supabase
-          .from("drivers")
+          .from("conductors")
           .select("is_active")
-          .eq("id", driverId)
+          .eq("id", conductorId)
           .single();
 
         if (!error && data) {
-          setIsTracking(data.is_active);
+          setIsTracking(data.is_active || false);
         }
       } catch (error) {
-        console.error("Erro ao verificar status inicial:", error);
+        console.error("Erro ao verificar status:", error);
       }
     };
 
-    checkInitialStatus();
-  }, [driverId]);
+    checkStatus();
+  }, [conductorId]);
 
   const startTracking = async () => {
     setLoading(true);
 
     try {
-      // Pedir permissão de localização
-      if (!navigator.geolocation) {
-        alert("Geolocalização não é suportada neste navegador.");
-        return;
-      }
-
-      // Atualizar status no Supabase
+      // 1. Atualizar status na base de dados
       const { error: updateError } = await supabase
-        .from("drivers")
+        .from("conductors")
         .update({ is_active: true })
-        .eq("id", driverId);
+        .eq("id", conductorId);
 
       if (updateError) {
-        console.error("Erro ao ativar rastreamento:", updateError);
-        return;
+        throw new Error(`Erro ao ativar tracking: ${updateError.message}`);
       }
 
-      // Iniciar watch de localização
+      // 2. Iniciar geolocalização
+      if (!navigator.geolocation) {
+        throw new Error("Geolocalização não suportada");
+      }
+
       const id = navigator.geolocation.watchPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
 
-          try {
-            await supabase
-              .from("drivers")
-              .update({
-                latitude,
-                longitude,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", driverId);
-          } catch (error) {
-            console.error("Erro ao atualizar localização:", error);
-          }
+          // Atualizar localização em tempo real
+          await supabase
+            .from("conductors")
+            .update({ latitude, longitude })
+            .eq("id", conductorId);
+
+          // Opcional: Salvar no histórico
+          await supabase.from("conductor_locations").insert({
+            conductor_id: conductorId,
+            latitude,
+            longitude,
+            accuracy: position.coords.accuracy || 0,
+          });
         },
         (error) => {
           console.error("Erro de geolocalização:", error);
-          alert("Erro ao obter localização. Verifique as permissões.");
+          toast({
+            title: "Erro de Localização",
+            description: "Verifique as permissões do navegador",
+            variant: "destructive",
+          });
         },
         {
           enableHighAccuracy: true,
@@ -86,8 +92,20 @@ const ToggleTrackingButton: React.FC<ToggleTrackingButtonProps> = ({
 
       setWatchId(id);
       setIsTracking(true);
+
+      toast({
+        title: "Tracking Ativo",
+        description: "TukTuk está agora visível no mapa",
+        variant: "default",
+      });
     } catch (error) {
-      console.error("Erro ao iniciar rastreamento:", error);
+      console.error("Erro ao iniciar tracking:", error);
+      toast({
+        title: "Erro",
+        description:
+          error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -97,26 +115,37 @@ const ToggleTrackingButton: React.FC<ToggleTrackingButtonProps> = ({
     setLoading(true);
 
     try {
-      // Parar watch de localização
-      if (watchId) {
+      // 1. Parar geolocalização
+      if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
 
-      // Atualizar status no Supabase
+      // 2. Atualizar status na base de dados
       const { error } = await supabase
-        .from("drivers")
+        .from("conductors")
         .update({ is_active: false })
-        .eq("id", driverId);
+        .eq("id", conductorId);
 
       if (error) {
-        console.error("Erro ao desativar rastreamento:", error);
-        return;
+        throw new Error(`Erro ao desativar tracking: ${error.message}`);
       }
 
       setIsTracking(false);
+
+      toast({
+        title: "Tracking Desativo",
+        description: "TukTuk não está mais visível no mapa",
+        variant: "default",
+      });
     } catch (error) {
-      console.error("Erro ao parar rastreamento:", error);
+      console.error("Erro ao parar tracking:", error);
+      toast({
+        title: "Erro",
+        description:
+          error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -126,7 +155,7 @@ const ToggleTrackingButton: React.FC<ToggleTrackingButtonProps> = ({
     <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-lg shadow-lg">
       <div className="text-center">
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          Controlo de Rastreamento
+          🎛️ Controlo de Rastreamento
         </h3>
         <p className="text-sm text-gray-600">
           {isTracking ? "🟢 TukTuk visível no mapa" : "🔴 TukTuk offline"}
@@ -163,4 +192,4 @@ const ToggleTrackingButton: React.FC<ToggleTrackingButtonProps> = ({
   );
 };
 
-export default ToggleTrackingButton;
+export default SimpleTrackingButton;
