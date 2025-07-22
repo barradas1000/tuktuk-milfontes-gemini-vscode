@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import ConductorPermissionsManager from "@/components/admin/ConductorPermissionsManager";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +22,8 @@ const Admin = () => {
       "IsAdmin:",
       isAdmin
     );
+
+    // Verificar se é necessário redirecionar
     if (!loading) {
       if (!user) {
         console.log("No user found, redirecting to login");
@@ -31,6 +34,18 @@ const Admin = () => {
         // For now, we'll still allow access but could be restricted
       }
     }
+
+    // Verificação adicional da sessão para garantir que está corretamente carregada
+    const checkSessionTimeout = setTimeout(() => {
+      if (!user && !loading) {
+        console.log(
+          "Admin page: Session verification timeout - redirecting to login"
+        );
+        navigate("/login");
+      }
+    }, 2000);
+
+    return () => clearTimeout(checkSessionTimeout);
   }, [user, loading, isAdmin, navigate]);
 
   if (loading) {
@@ -39,6 +54,14 @@ const Admin = () => {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Carregando...</p>
+
+          {/* Botão de emergência para forçar refresh da página */}
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 text-sm text-blue-500 hover:underline"
+          >
+            Problema ao carregar? Clique aqui para atualizar
+          </button>
         </div>
       </div>
     );
@@ -75,6 +98,9 @@ const Admin = () => {
       </div>
 
       <AdminDashboard />
+      <div className="mt-8">
+        <ConductorPermissionsManager />
+      </div>
     </div>
   );
 };

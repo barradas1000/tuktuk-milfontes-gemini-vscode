@@ -1,0 +1,593 @@
+import { EmergencyCacheHelper } from "@/components/EmergencyCacheHelper";
+import DevCacheHelper from "@/components/DevCacheHelper";
+import { allowedAdmins } from "@/constants/allowedAdmins";
+import { useAuth } from "@/hooks      {/* Botão para limpar cache diretamente */}
+        <button
+          onClick={clearBrowserCache}
+          className="mt-6 text-xs text-blue-500 hover:text-blue-700 underline"
+        >
+          Problema ao carregar? Clique aqui para limpar cache
+        </button>
+        
+        {/* Botão alternativo para navegação direta */}
+        <button
+          onClick={() => window.location.href = "/admin?force=true"}
+          className="mt-2 text-xs text-blue-500 hover:text-blue-700 underline"
+        >
+          Acessar Admin diretamente
+        </button>h";
+import { supabase } from "@/lib/supabase";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Lock, Eye, EyeOff } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Auth() {
+  // Navegação e autenticação
+  const navigate = useNavigate();
+  const { signIn, signUp, user, loading } = useAuth();
+
+  // Estados básicos
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("login");
+  const [showEmergencyHelper, setShowEmergencyHelper] = useState(false);
+
+  // Estados de visibilidade de senha
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+
+  // Estados do formulário de login
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  // Estados do formulário de cadastro
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupFullName, setSignupFullName] = useState("");
+
+  // Estados de recuperação de senha
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
+
+  // Efeito para redirecionamento quando já autenticado
+  useEffect(() => {
+    if (user && !loading) {
+      console.log("[Auth] Usuário já autenticado, redirecionando para /admin");
+      // Usando uma abordagem mais direta para o redirecionamento com timeout para garantir que a sessão seja propagada
+      setTimeout(() => {
+        window.location.href = "/admin";
+      }, 500);
+    }
+  }, [user, loading]);
+
+  // Limpeza de cache quando solicitada
+  const clearBrowserCache = () => {
+    console.log("[Auth] Limpando cache do navegador");
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Força recarregamento da página sem cache
+    window.location.href = window.location.pathname + "?nocache=" + Date.now();
+  };
+
+  // Manipulador de login
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log("[Auth] Tentando login com:", loginEmail);
+      const { error } = await signIn(loginEmail, loginPassword);
+
+      if (error) {
+        console.error("[Auth] Erro no login:", error);
+        const errorMessage =
+          (typeof error === "object" && error !== null && "message" in error
+            ? (error as { message?: string }).message
+            : undefined) || "Erro desconhecido ao fazer login";
+
+        if (errorMessage.includes("Invalid login credentials")) {
+          setError("Email ou senha incorretos");
+        } else if (errorMessage.includes("Email not confirmed")) {
+          setError("Por favor, confirme seu email antes de fazer login");
+        } else {
+          setError(errorMessage);
+        }
+      } else {
+        console.log("[Auth] Login bem-sucedido, redirecionando");
+        // Garantir que a sessão seja persistida e usar setTimeout para dar tempo ao Supabase
+        setTimeout(() => {
+          console.log("[Auth] Aplicando redirecionamento para /admin após timeout");
+          window.location.href = "/admin";
+        }, 800);
+        return;
+      }
+    } catch (err) {
+      console.error("[Auth] Exceção durante login:", err);
+      setError("Erro ao fazer login. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Manipulador de cadastro
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      console.log("[Auth] Tentando cadastro com:", signupEmail);
+      const { error } = await signUp(
+        signupEmail,
+        signupPassword,
+        signupFullName
+      );
+
+      if (error) {
+        console.error("[Auth] Erro no cadastro:", error);
+        const errorMessage =
+          (typeof error === "object" && error !== null && "message" in error
+            ? (error as { message?: string }).message
+            : undefined) || "Erro ao criar conta";
+
+        if (
+          errorMessage.includes("already registered") ||
+          errorMessage.includes("User already registered")
+        ) {
+          setError(
+            "Este email já está registrado. Por favor, faça login ou recupere a senha."
+          );
+        } else {
+          setError(errorMessage);
+        }
+      } else {
+        setSuccess(
+          "Conta criada com sucesso! Verifique seu email para confirmar o cadastro."
+        );
+        setSignupEmail("");
+        setSignupPassword("");
+        setSignupFullName("");
+        setActiveTab("login");
+      }
+    } catch (err) {
+      console.error("[Auth] Exceção durante cadastro:", err);
+      setError("Erro ao criar conta. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Manipulador de recuperação de senha
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResettingPassword(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const email = resetEmail.trim().toLowerCase();
+      console.log("[Auth] Tentando recuperar senha para:", email);
+
+      if (!allowedAdmins.includes(email)) {
+        setError("Email não autorizado para recuperação de senha.");
+        return;
+      }
+
+      // Verifica se o usuário existe
+      const { data, error: fetchError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .single();
+
+      if (fetchError || !data) {
+        setError(
+          "Este email ainda não criou uma conta. Por favor, crie uma conta primeiro."
+        );
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://tuktuk-milfontes.vercel.app/reset-password",
+      });
+
+      if (error) {
+        console.error("[Auth] Erro na recuperação de senha:", error);
+        setError("Erro ao enviar email de recuperação: " + error.message);
+      } else {
+        setSuccess(
+          "Email de recuperação enviado! Verifique sua caixa de entrada."
+        );
+        setResetEmail("");
+        setShowResetForm(false);
+      }
+    } catch (err) {
+      console.error("[Auth] Exceção durante recuperação de senha:", err);
+      setError("Erro ao enviar email de recuperação. Tente novamente.");
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  // Renderização durante carregamento inicial
+  if (loading) {
+    console.log("[Auth] Em carregamento:", { hasUser: !!user });
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+        <div className="text-gray-600 mb-2">Carregando autenticação...</div>
+
+        // Botão para limpar cache diretamente */}
+        <button
+          onClick={clearBrowserCache}
+          className="mt-6 text-xs text-blue-500 hover:text-blue-700 underline"
+        >
+          Problema ao carregar? Clique aqui para limpar cache
+        </button>
+        
+        {/* Botão alternativo para navegação direta */}
+        <button
+          onClick={() => window.location.href = "/admin?force=true"}
+          className="mt-2 text-xs text-blue-500 hover:text-blue-700 underline"
+        >
+          Acessar Admin diretamente
+        </button>
+      </div>
+    );
+  }
+
+  // Se o helper de emergência está ativado
+  if (showEmergencyHelper) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-4">Problemas com o login?</h2>
+
+          <p className="mb-4">
+            Alguns problemas podem ser resolvidos limpando o cache do navegador.
+          </p>
+
+          <div className="space-y-3">
+            <Button className="w-full" onClick={clearBrowserCache}>
+              Limpar Cache e Recarregar
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => (window.location.href = "/")}
+            >
+              Voltar para a Página Inicial
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowEmergencyHelper(false)}
+            >
+              Tentar Login Novamente
+            </Button>
+          </div>
+
+          <div className="mt-6 text-sm text-gray-500">
+            <p>Se o problema persistir, tente:</p>
+            <ul className="list-disc pl-5 mt-2">
+              <li>Usar outro navegador</li>
+              <li>Verificar sua conexão com a internet</li>
+              <li>Entrar em contato com o suporte</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Renderização principal
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <Lock className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+          <h1 className="text-3xl font-bold text-gray-900">
+            Área Administrativa
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Faça login para acessar o painel administrativo da aplicação
+            Tuktuk-milfontes.
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => {
+                setActiveTab(value);
+                setError(null);
+                setSuccess(null);
+              }}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Entrar</TabsTrigger>
+                <TabsTrigger value="signup">Criar Conta</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="login">
+                <CardTitle>Fazer Login</CardTitle>
+                <CardDescription>
+                  Entre com suas credenciais para acessar o sistema
+                </CardDescription>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <CardTitle>Criar Conta</CardTitle>
+                <CardDescription>
+                  Crie uma nova conta de administrador
+                </CardDescription>
+              </TabsContent>
+            </Tabs>
+          </CardHeader>
+
+          <CardContent>
+            {error && (
+              <Alert className="mb-4 border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="mb-4 border-green-200 bg-green-50">
+                <AlertDescription className="text-green-800">
+                  {success}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {showResetForm ? (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-medium">Recuperar Senha</h3>
+                  <p className="text-sm text-gray-600">
+                    Digite seu email para receber o link de recuperação
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                    disabled={isResettingPassword}
+                  />
+                </div>
+
+                <div className="flex space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowResetForm(false)}
+                    className="flex-1"
+                    disabled={isResettingPassword}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={isResettingPassword}
+                  >
+                    {isResettingPassword ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      "Enviar Email"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
+                <TabsContent value="login">
+                  <form onSubmit={handleSignIn} className="space-y-4">
+                    <div>
+                      <Label htmlFor="login-email">Email</Label>
+                      <Input
+                        id="login-email"
+                        type="email"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="login-password">Senha</Label>
+                      <div className="relative">
+                        <Input
+                          id="login-password"
+                          type={showLoginPassword ? "text" : "password"}
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          disabled={isLoading}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          onClick={() =>
+                            setShowLoginPassword(!showLoginPassword)
+                          }
+                        >
+                          {showLoginPassword ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Entrando...
+                        </>
+                      ) : (
+                        "Entrar"
+                      )}
+                    </Button>
+
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        className="text-sm text-blue-600 hover:underline"
+                        onClick={() => setShowResetForm(true)}
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="signup">
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div>
+                      <Label htmlFor="signup-name">Nome Completo</Label>
+                      <Input
+                        id="signup-name"
+                        type="text"
+                        value={signupFullName}
+                        onChange={(e) => setSignupFullName(e.target.value)}
+                        placeholder="Seu nome completo"
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="signup-password">Senha</Label>
+                      <div className="relative">
+                        <Input
+                          id="signup-password"
+                          type={showSignupPassword ? "text" : "password"}
+                          value={signupPassword}
+                          onChange={(e) => setSignupPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          minLength={6}
+                          disabled={isLoading}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          onClick={() =>
+                            setShowSignupPassword(!showSignupPassword)
+                          }
+                        >
+                          {showSignupPassword ? (
+                            <EyeOff className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Criando conta...
+                        </>
+                      ) : (
+                        "Criar Conta"
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="text-center mt-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/")}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            ← Voltar ao site
+          </Button>
+
+          <button
+            onClick={() => setShowEmergencyHelper(true)}
+            className="text-xs text-gray-500 hover:text-gray-700 block mx-auto mt-2"
+          >
+            Problemas para acessar? Clique aqui
+          </button>
+        </div>
+
+        {/* Helper de cache apenas em desenvolvimento */}
+        {process.env.NODE_ENV === "development" && <DevCacheHelper />}
+      </div>
+    </div>
+  );
+}
