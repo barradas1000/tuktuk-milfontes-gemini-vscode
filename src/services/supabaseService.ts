@@ -478,3 +478,16 @@ export const updateConductorLocation = async (
     // Não fazemos throw aqui porque o histórico é opcional
   }
 };
+
+export const testSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('profiles').select('*').limit(1);
+    if (error) {
+      console.error('Erro ao conectar ao Supabase:', error);
+    } else {
+      console.log('Conexão com Supabase bem-sucedida:', data);
+    }
+  } catch (err) {
+    console.error('Erro inesperado ao conectar ao Supabase:', err);
+  }
+};

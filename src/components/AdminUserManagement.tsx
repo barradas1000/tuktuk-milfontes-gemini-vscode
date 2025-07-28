@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import {
   getAllProfiles,
   getAllConductors,
@@ -20,6 +22,9 @@ interface Conductor {
 }
 
 function AdminUserManagement() {
+  console.log("[AdminUserManagement] Componente montado");
+  const { profile, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [conductors, setConductors] = useState<Conductor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,16 +34,23 @@ function AdminUserManagement() {
   );
 
   const fetchAllData = async () => {
+    console.log("[AdminUserManagement] Iniciando fetch de perfis e condutores");
     try {
       setLoading(true);
       const [profilesData, conductorsData] = await Promise.all([
         getAllProfiles(),
         getAllConductors(),
       ]);
+      console.log("[AdminUserManagement] Perfis carregados:", profilesData);
+      console.log(
+        "[AdminUserManagement] Condutores carregados:",
+        conductorsData
+      );
       setProfiles(profilesData);
       setConductors(conductorsData);
       setError(null);
     } catch (err: unknown) {
+      console.error("[AdminUserManagement] Erro ao carregar dados:", err);
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
       setLoading(false);
@@ -50,6 +62,9 @@ function AdminUserManagement() {
   }, []);
 
   const handleAssignConductorRole = async (userId: string) => {
+    console.log(
+      `[AdminUserManagement] Iniciando atribuição de papel de condutor para usuário: ${userId}, condutor: ${selectedConductorId}`
+    );
     if (!selectedConductorId) {
       alert("Por favor, selecione um condutor para atribuir.");
       return;
@@ -57,9 +72,24 @@ function AdminUserManagement() {
     try {
       setLoading(true);
       await assignConductorRole(userId, selectedConductorId);
+      console.log(
+        `[AdminUserManagement] Papel de condutor atribuído para usuário: ${userId}`
+      );
       await fetchAllData(); // Recarrega os dados
       alert("Papel de condutor atribuído com sucesso!");
+      // Se o usuário logado mudou seu próprio papel
+      if (profile?.id === userId) {
+        console.log(
+          "[AdminUserManagement] Usuário logado mudou seu próprio papel para condutor, atualizando perfil e redirecionando"
+        );
+        await refreshProfile();
+        navigate("/condutor/dashboard");
+      }
     } catch (err: unknown) {
+      console.error(
+        `[AdminUserManagement] Erro ao atribuir papel de condutor para usuário: ${userId}`,
+        err
+      );
       setError(
         `Erro ao atribuir papel: ${
           err instanceof Error ? err.message : "Erro desconhecido"
@@ -71,6 +101,9 @@ function AdminUserManagement() {
   };
 
   const handleRemoveConductorRole = async (userId: string) => {
+    console.log(
+      `[AdminUserManagement] Iniciando remoção de papel de condutor para usuário: ${userId}`
+    );
     if (
       !window.confirm(
         "Tem certeza que deseja remover o papel de condutor deste usuário?"
@@ -81,9 +114,24 @@ function AdminUserManagement() {
     try {
       setLoading(true);
       await removeConductorRole(userId);
+      console.log(
+        `[AdminUserManagement] Papel de condutor removido para usuário: ${userId}`
+      );
       await fetchAllData(); // Recarrega os dados
       alert("Papel de condutor removido com sucesso!");
+      // Se o usuário logado mudou seu próprio papel
+      if (profile?.id === userId) {
+        console.log(
+          "[AdminUserManagement] Usuário logado mudou seu próprio papel para admin, atualizando perfil e redirecionando"
+        );
+        await refreshProfile();
+        navigate("/admin");
+      }
     } catch (err: unknown) {
+      console.error(
+        `[AdminUserManagement] Erro ao remover papel de condutor para usuário: ${userId}`,
+        err
+      );
       setError(
         `Erro ao remover papel: ${
           err instanceof Error ? err.message : "Erro desconhecido"

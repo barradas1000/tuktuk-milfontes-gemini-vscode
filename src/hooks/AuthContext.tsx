@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Função centralizada para resolver o perfil do usuário
   const resolveUserProfile = async (sessionUser: User | null) => {
     console.log("[AuthContext] Resolving user profile:", sessionUser?.id);
+    console.log("[AuthContext] Session user metadata:", sessionUser?.user_metadata);
 
     if (!sessionUser) {
       console.log("[AuthContext] No user, setting profile to null");
@@ -26,8 +27,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    // Force loading to true while resolving profile
+    setLoading(true);
+
     try {
       // Buscar perfil do banco de dados
+      console.log("[AuthContext] Querying profiles table for user:", sessionUser.id);
       const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
@@ -37,7 +42,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("[AuthContext] Profile query result:", {
         userId: sessionUser.id,
         profileData,
-        error,
+        error: error?.message || null,
+        errorCode: error?.code || null,
         timestamp: new Date().toISOString(),
       });
 
@@ -45,6 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(profileData);
         console.log("[AuthContext] Profile set from DB:", profileData);
       } else {
+        console.log("[AuthContext] Profile not found in DB or error occurred, using fallback");
         // Fallback para metadados do usuário se o perfil não existir no banco
         const fallbackProfile: Profile = {
           id: sessionUser.id,
@@ -74,6 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
     } finally {
       // Garantir que loading seja sempre false após resolver o perfil
+      console.log("[AuthContext] Setting loading to false after profile resolution");
       setLoading(false);
     }
   };
@@ -143,10 +151,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(newSession);
           setUser(newSession.user);
 
-          if (!authResolved.current) {
-            authResolved.current = true;
-            await resolveUserProfile(newSession.user);
-          }
+          // Para SIGNED_IN, sempre resolver o perfil (mesmo que authResolved já esteja true)
+          console.log(
+            "[AuthContext] Forcing profile resolution for SIGNED_IN event"
+          );
+          await resolveUserProfile(newSession.user);
         } else if (event === "SIGNED_OUT") {
           console.log("[AuthContext] User signed out");
           setUser(null);
@@ -214,6 +223,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setProfile(null);
       setUser(null);
       setSession(null);
+      authResolved.current = false; // Reset a flag quando faz logout
     }
   };
 
@@ -285,7 +295,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const key = localStorage.key(i);
         if (key) {
           try {
-            const value = localStorage.getItem(key);
+            let value = localStorage.getItem(key);
+            // Se for um objeto, transforma em string JSON
+            if (value && typeof value === "object") {
+              value = JSON.stringify(value);
+            }
             ls[key] = value !== null ? value : "";
           } catch (err) {
             ls[key] = "[Erro ao ler]";
@@ -303,7 +317,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const key = sessionStorage.key(i);
         if (key) {
           try {
-            const value = sessionStorage.getItem(key);
+            let value = sessionStorage.getItem(key);
+            if (value && typeof value === "object") {
+              value = JSON.stringify(value);
+            }
             ss[key] = value !== null ? value : "";
           } catch (err) {
             ss[key] = "[Erro ao ler]";

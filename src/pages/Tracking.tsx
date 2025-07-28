@@ -37,10 +37,8 @@ export default function Tracking() {
   const { position, permission, error, isSupported } = useGeolocation();
   const { activeConductors, isLoading, activeError } = useConductors();
 
-  // Centro do mapa: usuário ou Milfontes
-  const mapCenter = position
-    ? [position.coords.latitude, position.coords.longitude]
-    : [37.722, -8.794];
+  // Centro do mapa: sempre Vila Nova de Milfontes
+  const mapCenter = [37.722, -8.794];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -61,29 +59,41 @@ export default function Tracking() {
             center={mapCenter}
             zoom={15}
             style={{ height: "100%", width: "100%" }}
+            whenCreated={(map) => map.setView(mapCenter, 15)}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {/* Marcador do usuário */}
-            {position && (
-              <Marker
-                position={[position.coords.latitude, position.coords.longitude]}
-                icon={userIcon}
-              >
-                <Popup>
-                  <div className="text-center">
-                    <h3 className="font-bold text-blue-600">Você está aqui!</h3>
-                    <p className="text-xs text-gray-500">
-                      Lat: {position.coords.latitude.toFixed(5)}
-                      <br />
-                      Lng: {position.coords.longitude.toFixed(5)}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
+            {position &&
+              typeof position.coords.latitude === "number" &&
+              typeof position.coords.longitude === "number" &&
+              !isNaN(position.coords.latitude) &&
+              !isNaN(position.coords.longitude) && (
+                <Marker
+                  position={[position.coords.latitude, position.coords.longitude]}
+                  icon={userIcon}
+                >
+                  <Popup>
+                    <div className="text-center">
+                      <h3 className="font-bold text-blue-600">Você está aqui!</h3>
+                      <p className="text-xs text-gray-500">
+                        Lat: {position.coords.latitude.toFixed(5)}
+                        <br />
+                        Lng: {position.coords.longitude.toFixed(5)}
+                      </p>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
             {/* Marcadores dos tuktuks ativos */}
-            {activeConductors.map((condutor) =>
-              condutor.latitude && condutor.longitude ? (
+            {activeConductors
+              .filter(
+                (condutor) =>
+                  typeof condutor.latitude === "number" &&
+                  typeof condutor.longitude === "number" &&
+                  !isNaN(condutor.latitude) &&
+                  !isNaN(condutor.longitude)
+              )
+              .map((condutor) => (
                 <Marker
                   key={condutor.id}
                   position={[condutor.latitude, condutor.longitude]}
@@ -114,8 +124,7 @@ export default function Tracking() {
                     </div>
                   </Popup>
                 </Marker>
-              ) : null
-            )}
+              ))}
           </MapContainer>
         )}
         {/* Estado vazio: nenhum tuktuk ativo */}

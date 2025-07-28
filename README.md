@@ -38,6 +38,21 @@ npm run dev
 - `src/hooks/` - Hooks customizados
 - `src/lib/` - Configurações e utilitários
 - `src/i18n/` - Internacionalização
+- `sql/` - Scripts SQL organizados (migração, schema, backups)
+- `documentation/` - Documentação completa organizada por temas
+- `docs/` - Documentação técnica adicional
+
+## 📚 Documentação
+
+A documentação completa está organizada na pasta `documentation/`:
+
+- **[📋 01-projeto](./documentation/01-projeto/)** - Visão geral e informações do projeto
+- **[🔄 02-migracao](./documentation/02-migracao/)** - Processo de migração Supabase
+- **[🏗️ 03-arquitetura](./documentation/03-arquitetura/)** - Arquitetura e estrutura do sistema
+- **[⚙️ 04-funcionalidades](./documentation/04-funcionalidades/)** - Funcionalidades específicas
+- **[🔧 05-manutencao](./documentation/05-manutencao/)** - Guias de manutenção e desenvolvimento
+
+Para uma visão completa, consulte o [README da documentação](./documentation/README.md).
 
 ## Funcionalidades Principais
 

@@ -30,4 +30,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Variáveis de ambiente do Supabase não configuradas!');
   console.warn('VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são necessárias.');
+  console.log('Supabase URL:', supabaseUrl);
+  console.log('Supabase Anon Key:', supabaseAnonKey);
+} else {
+  console.log('Supabase client initialized successfully.');
 }
+
+// Exportar o cliente Supabase para uso em outros módulos
+export default supabase;

@@ -24,6 +24,11 @@ const TukTukIcon = new L.Icon({
 });
 
 const PassengerMap: React.FC = () => {
+  const [dragging, setDragging] = useState(false);
+  // Stubs for missing handlers (implement as needed)
+  const handleDragStart = () => setDragging(true);
+  const handleLocationGranted = () => setShowUserLocation(true);
+  const handleLocationDenied = () => setShowUserLocation(false);
   const { t } = useTranslation();
 
   // 🎯 MODERNIZAÇÃO: Usar hook profissional useActiveConductors
@@ -39,33 +44,38 @@ const PassengerMap: React.FC = () => {
   const mapRef = useRef<L.Map | null>(null);
   const [userInteracted, setUserInteracted] = useState(false);
   const [buttonPosition, setButtonPosition] = useState({ x: 20, y: 20 });
-  const [dragging, setDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
   const isGeolocationSupported =
     typeof navigator !== "undefined" && "geolocation" in navigator;
 
   // 🎯 REMOVIDO: fetchActiveConductors + useEffect + real-time manual
-  // ✅ AGORA: useConductorsWithPermissions hook faz tudo automaticamente
-  // - Cache inteligente via React Query
-  // - Real-time via background refresh (60s)
   // - Optimistic updates + error recovery
   // - Invalidação automática quando necessário
 
   // Center map based on user position or conductors
   useEffect(() => {
     if (!userInteracted && mapRef.current) {
-      if (userPosition && activeConductors.length > 0) {
+      const validConductors = activeConductors.filter(
+        (c) =>
+          typeof c.latitude === "number" &&
+          typeof c.longitude === "number" &&
+          !isNaN(c.latitude) &&
+          !isNaN(c.longitude) &&
+          Math.abs(c.latitude) <= 90 &&
+          Math.abs(c.longitude) <= 180
+      );
+      if (userPosition && validConductors.length > 0) {
         const bounds = L.latLngBounds([
           [userPosition.lat, userPosition.lng] as L.LatLngTuple,
-          ...activeConductors.map((c) => [c.lat, c.lng] as L.LatLngTuple),
+          ...validConductors.map((c) => [c.latitude!, c.longitude!] as L.LatLngTuple),
         ]);
         mapRef.current.fitBounds(bounds, { padding: [50, 50] });
       } else if (userPosition) {
         mapRef.current.setView([userPosition.lat, userPosition.lng], 15);
-      } else if (activeConductors.length > 0) {
+      } else if (validConductors.length > 0) {
         const bounds = L.latLngBounds(
-          activeConductors.map((c) => [c.lat, c.lng] as L.LatLngTuple)
+          validConductors.map((c) => [c.latitude!, c.longitude!] as L.LatLngTuple)
         );
         mapRef.current.fitBounds(bounds, { padding: [50, 50] });
       }
@@ -77,32 +87,6 @@ const PassengerMap: React.FC = () => {
       dragstart: () => setUserInteracted(true),
     });
     return null;
-  };
-
-  const handleLocationGranted = (position: GeolocationPosition) => {
-    setUserPosition({
-      lat: position.coords.latitude,
-      lng: position.coords.longitude,
-    });
-    setShowUserLocation(true);
-    setUserInteracted(false);
-  };
-
-  const handleLocationDenied = () => {
-    setShowUserLocation(false);
-    setUserPosition(null);
-    // ✅ MODERNIZADO: Usar error do useConductorsWithPermissions se necessário
-    // setError(t("errors.locationDenied")); // Removido estado local
-  };
-
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
-    setDragging(true);
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    dragOffset.current = {
-      x: clientX - buttonPosition.x,
-      y: clientY - buttonPosition.y,
-    };
   };
 
   const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
@@ -184,32 +168,43 @@ const PassengerMap: React.FC = () => {
     <>
       <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
         <MapContainer
-          center={[37.889, -8.785]}
-          zoom={14}
+          center={[37.722, -8.794]}
+          zoom={15}
           style={{ height: "100%", width: "100%" }}
           ref={mapRef}
+          whenCreated={map => map.setView([37.722, -8.794], 15)}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <MapEvents />
-          {activeConductors.map((conductor) => (
-            <Marker
-              key={conductor.id}
-              position={[conductor.lat, conductor.lng]}
-              icon={TukTukIcon}
-            >
-              <Popup>
-                <div className="text-center">
-                  <h3 className="font-bold text-blue-600">{conductor.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    {t("map.tukTukAvailable")}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {t("map.lastUpdate")}: {new Date().toLocaleTimeString()}
-                  </p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          {activeConductors
+            .filter(
+              (conductor) =>
+                typeof conductor.latitude === "number" &&
+                typeof conductor.longitude === "number" &&
+                !isNaN(conductor.latitude) &&
+                !isNaN(conductor.longitude) &&
+                Math.abs(conductor.latitude) <= 90 &&
+                Math.abs(conductor.longitude) <= 180
+            )
+            .map((conductor) => (
+              <Marker
+                key={conductor.id}
+                position={[conductor.latitude!, conductor.longitude!]}
+                icon={TukTukIcon}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <h3 className="font-bold text-blue-600">{conductor.name}</h3>
+                    <p className="text-sm text-gray-600">
+                      {t("map.tukTukAvailable")}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {t("map.lastUpdate")}: {new Date().toLocaleTimeString()}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           {showUserLocation && userPosition && mapRef.current && (
             <UserLocationMarker
               map={mapRef.current}
