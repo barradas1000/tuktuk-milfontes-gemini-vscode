@@ -7,6 +7,11 @@ node_modules/
 /.next/
 /.vercel/
 /.output/
+dist/
+build/
+.next/
+.vercel/
+.output/
 
 # Vite
 .vite/
@@ -16,6 +21,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
+*.tmp
 
 # Ambiente
 .env
@@ -23,10 +30,14 @@ pnpm-debug.log*
 
 # Supabase
 .supabase/
+supabase/.temp/
+supabase/.env*
+supabase-local/
 
 # Sistema
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # IDEs
 .vscode/
@@ -38,9 +49,7 @@ Thumbs.db
 
 # Outros
 *.local
-*.log
 *.swp
-*.tmp
 
 # Lockfiles alternativos
 bun.lockb
@@ -49,9 +58,21 @@ yarn.lock
 
 # Testes
 coverage/
-
-# Variáveis de ambiente locais
-.env
+*.test.js.snap
 
 # Documentação interna
-/docs/
+docs/
+
+# Backups e dumps
+backup*
+*.dump
+*.sql
+
+# Segredos e variáveis locais
+secrets.*
+
+# Tipos gerados
+src/types/generated/
+
+# Build artifacts
+out/
