@@ -124,6 +124,7 @@ export const getCurrentAdminProfile =
         return null;
       }
 
+      console.log("[DEBUG] Perfil retornado pelo Supabase:", data);
       return data;
     } catch (error) {
       console.error("Erro ao buscar perfil admin:", error);

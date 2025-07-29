@@ -75,6 +75,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Aplicar cacheFirstStrategy apenas para tiles do OpenStreetMap
+  if (url.hostname.includes('tile.openstreetmap.org')) {
+    event.respondWith(cacheFirstStrategy(request));
+    return;
+  }
+
   // Recursos que devem sempre vir da rede
   if (NETWORK_ONLY.some((pattern) => url.href.includes(pattern))) {
     event.respondWith(fetch(request));
