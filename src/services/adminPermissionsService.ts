@@ -116,7 +116,7 @@ export const getCurrentAdminProfile =
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .eq("role", "admin")
+        .in("role", ["admin", "super_admin"])
         .single();
 
       if (error) {

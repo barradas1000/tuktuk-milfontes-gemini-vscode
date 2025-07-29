@@ -39,6 +39,26 @@ supabase-local/
 Thumbs.db
 Desktop.ini
 
+# Documentação e arquivos não necessários para deploy
+*.md
+*.MD
+*.sql
+*.SQL
+docs/
+documentation/
+scripts/
+backup.dum
+*.cjs
+*.sh
+*.bat
+*.ps1
+*.txt
+*.csv
+*.bak
+*.dump
+*.old
+*.example
+
 # IDEs
 .vscode/
 .idea/
