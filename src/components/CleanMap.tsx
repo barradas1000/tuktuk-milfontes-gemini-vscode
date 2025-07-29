@@ -76,27 +76,56 @@ const UserMarker: React.FC = () => {
 };
 
 // Componente principal do mapa
-const CleanMap: React.FC = () => {
+const PassengerMap: React.FC = () => {
   const [tukTukLocation] = useState<Coordinates | null>({ lat: 37.721, lng: -8.785 });
+  const { position: userPosition, error: geoError, isLoading: geoLoading, permission, isSupported, getLocation } = useGeolocation();
+  const { t } = useTranslation();
+
+  // Botão sempre visível e funcional
+  const renderLocateButton = () => (
+    <button
+      onClick={getLocation}
+      className={`bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition ${geoLoading ? 'opacity-50 cursor-wait' : ''}`}
+      disabled={geoLoading}
+    >
+      {geoLoading ? t("loading.tukTukLocation") : t("mapControls.locateMe")}
+    </button>
+  );
 
   return (
-    <MapContainer
-      center={[37.725, -8.783]}
-      zoom={13}
-      style={{ height: '400px', width: '100%', borderRadius: '8px' }}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      {tukTukLocation && (
-        <Marker position={[tukTukLocation.lat, tukTukLocation.lng]} icon={TukTukIcon}>
-          <Popup>O TukTuk está aqui!</Popup>
-        </Marker>
-      )}
-      <UserMarker />
-    </MapContainer>
+    <>
+      <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
+        <MapContainer
+          center={[37.725, -8.783]}
+          zoom={13}
+          style={{ height: '400px', width: '100%', borderRadius: '8px' }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          {tukTukLocation && (
+            <Marker position={[tukTukLocation.lat, tukTukLocation.lng]} icon={TukTukIcon}>
+              <Popup>O TukTuk está aqui!</Popup>
+            </Marker>
+          )}
+          <UserMarker />
+        </MapContainer>
+        {/* Botão de permissão sempre visível */}
+        <div style={{ position: "absolute", left: 20, top: 20, zIndex: 1000 }}>
+          {renderLocateButton()}
+        </div>
+        {/* Feedback de erro/permissão */}
+        {geoError && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded shadow z-[2000]">
+            {geoError}
+          </div>
+        )}
+        {/* ...existing overlays... */}
+      </div>
+      {/* ...existing code... */}
+    </>
   );
 };
 
-export default CleanMap;
+export default PassengerMap;

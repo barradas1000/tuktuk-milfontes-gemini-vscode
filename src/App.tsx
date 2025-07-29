@@ -1,3 +1,5 @@
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Suspense, lazy, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
@@ -237,7 +239,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AppContent />
+      <DndProvider backend={HTML5Backend}>
+        <AppContent />
+      </DndProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -141,12 +141,12 @@
     "geolocationNotSupportedMessage": "Je browser ondersteunt geen geolocatie. Gebruik een moderne browser of activeer de locatie handmatig.",
     "mapError": "Fout bij het laden van de kaart",
     "locationDenied": "Toestemming voor locatie geweigerd",
-    "noTukTuksTitle": "Geen tuk-tuks beschikbaar",
+    "noTukTuksTitle": "Tuktuk momenteel offline!",
     "noTukTuksMessage": "Er zijn momenteel geen tuk-tuks beschikbaar. Probeer het later opnieuw of neem contact met ons op."
   },
   "loading": {
-    "takingTooLong": "Duurt het te lang? Controleer je internetverbinding.",
-    "tukTukLocation": "Locatie van de tuk-tuk wordt geladen..."
+    "tukTukLocation": "Locatie van de tuk-tuk wordt geladen...",
+    "takingTooLong": "Duurt het te lang? Controleer je internetverbinding."
   },
   "tuktukTracking": {
     "title": "🛺 Volg onze tuk-tuk in realtime!",
@@ -365,6 +365,7 @@
   },
   "mapControls": {
     "locateMe": "📍 Mijn locatie",
+    "locationActive": "Locatie actief",
     "centerMap": "Kaart centreren",
     "waitingLocation": "Wachten op locatie...",
     "availableTukTuk": "Tuk-tuk beschikbaar",

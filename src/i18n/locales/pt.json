@@ -163,6 +163,7 @@
     "locateMe": "📍 Localizar-me",
     "centerMap": "Centralizar mapa",
     "waitingLocation": "Aguardando localização...",
+    "locationActive": "Localização ativa",
     "availableTukTuk": "TukTuk disponível",
     "yourLocation": "Sua Localização",
     "youAreHere": "Você está aqui"
@@ -391,9 +392,12 @@
     "geolocationNotSupported": "Geolocalização não suportada",
     "geolocationNotSupportedMessage": "Seu navegador não suporta geolocalização. Por favor, use um navegador moderno ou ative a localização manualmente.",
     "mapError": "Erro ao carregar o mapa",
-    "locationDenied": "Permissão de localização negada"
+    "locationDenied": "Permissão de localização negada",
+    "noTukTuksTitle": "Tuktuk offline neste momento!",
+    "noTukTuksMessage": "Não há tuk-tuks disponíveis agora. Por favor, tente novamente mais tarde ou entre em contacto."
   },
   "loading": {
+    "tukTukLocation": "Carregando localização do TukTuk...",
     "takingTooLong": "Está demorando muito? Verifique sua conexão com a internet."
   }
 }

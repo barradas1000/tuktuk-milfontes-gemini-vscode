@@ -4,12 +4,12 @@
     "geolocationNotSupportedMessage": "Your browser does not support geolocation. Please use a modern browser or enable location manually.",
     "mapError": "Error loading map",
     "locationDenied": "Location permission denied",
-    "noTukTuksTitle": "No tuk-tuks available",
+    "noTukTuksTitle": "Tuktuk offline right now!",
     "noTukTuksMessage": "No tuk-tuks are available at the moment. Please try again later or contact us."
   },
   "loading": {
-    "takingTooLong": "Is it taking too long? Check your internet connection.",
-    "tukTukLocation": "Loading tuk-tuk location..."
+    "tukTukLocation": "Loading tuk-tuk location...",
+    "takingTooLong": "Is it taking too long? Check your internet connection."
   },
   "titleHighlight": "Our tuk-tuks?",
   "subtitle": "Comfort, fun, and unique experiences for the whole family",
@@ -164,6 +164,7 @@
     "locateMe": "📍 Locate me",
     "centerMap": "Center map",
     "waitingLocation": "Waiting for location...",
+    "locationActive": "Location active",
     "availableTukTuk": "Tuk-tuk available",
     "yourLocation": "Your Location",
     "youAreHere": "You are here"

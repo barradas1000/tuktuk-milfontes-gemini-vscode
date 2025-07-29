@@ -1,54 +1,29 @@
-// src/components/DraggableDistanceCard.tsx
-import { useDrag } from 'react-dnd';
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React from 'react';
+import { useDrag } from '@use-gesture/react';
 
-interface Props {
-  distance: number | null;
-  time: number | null;
+interface DraggableDistanceCardProps {
+  distance: number;
+  time: number;
   position: { x: number; y: number };
   onDrop: (offset: { x: number; y: number }) => void;
 }
 
-const DraggableDistanceCard: React.FC<Props> = ({
-  distance,
-  time,
-  position,
-  onDrop,
-}) => {
-  const { t } = useTranslation();
-  const [{ isDragging }, drag] = useDrag({
-    type: 'distance-card',
-    item: () => ({ startPos: position }),
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-      offset: monitor.getDifferenceFromInitialOffset(),
-    }),
-    end: (_item, monitor) => {
-      const delta = monitor.getDifferenceFromInitialOffset();
-      if (delta) onDrop(delta);
-    },
+const DraggableDistanceCard: React.FC<DraggableDistanceCardProps> = ({ distance, time, position, onDrop }) => {
+  const bind = useDrag(({ offset: [x, y], down }) => {
+    if (!down) {
+      onDrop({ x, y });
+    }
   });
 
   return (
     <div
-      ref={drag}
-      className={`absolute z-[1000] bg-white rounded-lg shadow-lg p-3 cursor-grab select-none transition-opacity ${
-        isDragging ? 'opacity-75' : 'opacity-100'
-      }`}
-      style={{
-        top: position.y,
-        left: position.x,
-        touchAction: 'none',
-      }}
+      {...bind()}
+      style={{ position: 'absolute', top: position.y, left: position.x, touchAction: 'none' }}
+      className="bg-white p-4 rounded-lg shadow-lg z-10 cursor-grab"
     >
-      <h4 className="font-bold text-blue-600 mb-1">{t("distanceCard.currentLocation")}</h4>
-      {distance !== null && (
-        <p className="text-sm text-gray-700">{t("distanceCard.distance")}: {distance.toFixed(0)} {t("distanceCard.meters")}</p>
-      )}
-      {time !== null && (
-        <p className="text-sm text-gray-700">{t("distanceCard.estimatedTime")}: {time} {t("distanceCard.minutes")}</p>
-      )}
+      <p className="font-bold">TukTuk mais próximo:</p>
+      <p>{(distance / 1000).toFixed(2)} km</p>
+      <p>~{time} min</p>
     </div>
   );
 };

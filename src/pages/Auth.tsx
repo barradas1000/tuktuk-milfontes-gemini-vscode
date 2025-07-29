@@ -63,7 +63,7 @@ export default function Auth() {
       console.log("[Auth] Redirecting user with role:", profile.role);
       setIsLoading(false); // Reset loading antes do redirecionamento
       
-      if (profile.role === "admin") {
+      if (profile.role === "admin" || profile.role === "super_admin") {
         console.log("[Auth] Navigating to admin dashboard");
         navigate("/admin");
       } else if (profile.role === "condutor") {

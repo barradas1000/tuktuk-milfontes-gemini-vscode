@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import DraggableDistanceCard from "./DraggableDistanceCard";
 import { useTranslation } from "react-i18next";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
-  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import { UserLocationMarker } from "./UserLocationMarker";
 import { LocationPermissionButton } from "./LocationPermissionButton";
 import { LocationDebug } from "./LocationDebug";
 import { useActiveConductors } from "@/hooks/useActiveConductors";
-import { Coordinates } from "../types/supabase";
 import "leaflet/dist/leaflet.css";
 import tukTukIcon from "../assets/tuktuk-icon.png";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 const TukTukIcon = new L.Icon({
   iconUrl: tukTukIcon,
@@ -24,158 +24,122 @@ const TukTukIcon = new L.Icon({
 });
 
 const PassengerMap: React.FC = () => {
-  const [dragging, setDragging] = useState(false);
-  // Stubs for missing handlers (implement as needed)
-  const handleDragStart = () => setDragging(true);
-  const handleLocationGranted = () => setShowUserLocation(true);
-  const handleLocationDenied = () => setShowUserLocation(false);
+  const { position: userPosition, error: geoError, isLoading: geoLoading, permission, isSupported, getLocation } = useGeolocation();
   const { t } = useTranslation();
-
-  // 🎯 MODERNIZAÇÃO: Usar hook profissional useActiveConductors
-  // ✅ Elimina dependência de perfil admin
-  const {
-    data: activeConductors = [],
-    isLoading,
-    error,
-  } = useActiveConductors();
-
-  const [userPosition, setUserPosition] = useState<Coordinates | null>(null);
-  const [showUserLocation, setShowUserLocation] = useState(false);
+  const { data: activeConductors = [], isLoading, error } = useActiveConductors();
+  const [distanceCardPos, setDistanceCardPos] = useState({ x: 0, y: 0 });
   const mapRef = useRef<L.Map | null>(null);
-  const [userInteracted, setUserInteracted] = useState(false);
-  const [buttonPosition, setButtonPosition] = useState({ x: 20, y: 20 });
-  const dragOffset = useRef({ x: 0, y: 0 });
+  const [hasLocated, setHasLocated] = useState(false); // controla se o usuário clicou em localizar-me
 
-  const isGeolocationSupported =
-    typeof navigator !== "undefined" && "geolocation" in navigator;
 
-  // 🎯 REMOVIDO: fetchActiveConductors + useEffect + real-time manual
-  // - Optimistic updates + error recovery
-  // - Invalidação automática quando necessário
-
-  // Center map based on user position or conductors
+  // Centraliza o mapa na posição do usuário após clicar em localizar-me
   useEffect(() => {
-    if (!userInteracted && mapRef.current) {
-      const validConductors = activeConductors.filter(
-        (c) =>
-          typeof c.latitude === "number" &&
-          typeof c.longitude === "number" &&
-          !isNaN(c.latitude) &&
-          !isNaN(c.longitude) &&
-          Math.abs(c.latitude) <= 90 &&
-          Math.abs(c.longitude) <= 180
-      );
-      if (userPosition && validConductors.length > 0) {
-        const bounds = L.latLngBounds([
-          [userPosition.lat, userPosition.lng] as L.LatLngTuple,
-          ...validConductors.map((c) => [c.latitude!, c.longitude!] as L.LatLngTuple),
-        ]);
-        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-      } else if (userPosition) {
-        mapRef.current.setView([userPosition.lat, userPosition.lng], 15);
-      } else if (validConductors.length > 0) {
-        const bounds = L.latLngBounds(
-          validConductors.map((c) => [c.latitude!, c.longitude!] as L.LatLngTuple)
-        );
-        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-      }
+    if (hasLocated && userPosition && mapRef.current) {
+      mapRef.current.setView([userPosition.lat, userPosition.lng], 16, { animate: true });
     }
-  }, [userPosition, activeConductors, userInteracted]);
+  }, [userPosition, hasLocated]);
 
-  const MapEvents = () => {
-    useMapEvents({
-      dragstart: () => setUserInteracted(true),
-    });
-    return null;
-  };
-
-  const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
-    if (dragging) {
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      const buttonWidth = 100; // Ajuste conforme o tamanho do botão
-      const buttonHeight = 40;
-      setButtonPosition({
-        x: Math.max(
-          0,
-          Math.min(
-            window.innerWidth - buttonWidth,
-            clientX - dragOffset.current.x
-          )
-        ),
-        y: Math.max(
-          0,
-          Math.min(
-            window.innerHeight - buttonHeight,
-            clientY - dragOffset.current.y
-          )
-        ),
-      });
-    }
-  };
-
-  const handleDragEnd = () => {
-    setDragging(false);
+  const handleLocateMe = () => {
+    setHasLocated(true);
+    getLocation();
   };
 
   const handleRecenter = () => {
-    setUserInteracted(false);
+    if (mapRef.current) {
+      mapRef.current.setView([37.722, -8.794], 15);
+    }
   };
 
-  if (!isGeolocationSupported) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg shadow-inner text-center">
-        <div className="text-3xl mb-2">⚠️</div>
-        <h3 className="text-lg font-semibold text-gray-700">
-          {t("errors.geolocationNotSupported")}
-        </h3>
-        <p className="text-sm text-gray-500 max-w-xs">
-          {t("errors.geolocationNotSupportedMessage")}
-        </p>
-      </div>
-    );
+  function getNearestConductorInfo() {
+    if (!userPosition || activeConductors.length === 0) return null;
+    function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+    let minDist = Infinity;
+    let nearest = null;
+    for (const c of activeConductors) {
+      if (
+        typeof c.latitude === "number" &&
+        typeof c.longitude === "number" &&
+        !isNaN(c.latitude) &&
+        !isNaN(c.longitude)
+      ) {
+        const dist = haversine(userPosition.lat, userPosition.lng, c.latitude, c.longitude);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = c;
+        }
+      }
+    }
+    if (!nearest) return null;
+    const timeHours = minDist / 20;
+    const timeMinutes = Math.round(timeHours * 60);
+    return { distance: minDist, timeMinutes, conductor: nearest };
   }
+  const nearestInfo = getNearestConductorInfo();
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg shadow-inner text-center">
-        <div className="text-3xl mb-2">⚠️</div>
-        <h3 className="text-lg font-semibold text-gray-700">
-          {t("errors.mapError")}
-        </h3>
-        <p className="text-sm text-gray-500 max-w-xs">{error.message}</p>
-      </div>
-    );
-  }
+  const geolocationWarning = !isSupported ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-[2000] bg-white/80">
+      <div className="text-3xl mb-2">⚠️</div>
+      <h3 className="text-lg font-semibold text-gray-700">
+        {t("errors.geolocationNotSupported")}
+      </h3>
+      <p className="text-sm text-gray-500 max-w-xs">
+        {t("errors.geolocationNotSupportedMessage")}
+      </p>
+    </div>
+  ) : null;
 
-  // 🎯 MODERNIZADO: Usar isLoading do useConductorsWithPermissions hook
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p>{t("loading.tukTukLocation")}</p>
-          <p className="text-sm text-gray-500 mt-2">
-            {t("loading.takingTooLong")}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const errorWarning = error ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-[2000] bg-white/80">
+      <div className="text-3xl mb-2">⚠️</div>
+      <h3 className="text-lg font-semibold text-gray-700">
+        {t("errors.mapError")}
+      </h3>
+      <p className="text-sm text-gray-500 max-w-xs">{error.message}</p>
+    </div>
+  ) : null;
 
-  // Sempre renderiza o mapa, mesmo sem condutores
+  const loadingOverlay = isLoading ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-[2000] bg-white/60">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+      <p>{t ? t("loading.tukTukLocation") : "Carregando localização dos TukTuks..."}</p>
+      <p className="text-sm text-gray-500 mt-2">{t ? t("loading.takingTooLong") : "Está demorando muito? Verifique sua conexão com a internet."}</p>
+    </div>
+  ) : null;
+
   return (
     <>
+      {userPosition && nearestInfo && (
+        <DraggableDistanceCard
+          distance={nearestInfo.distance * 1000}
+          time={nearestInfo.timeMinutes}
+          position={distanceCardPos}
+          onDrop={(offset) => {
+            setDistanceCardPos((prev) => ({
+              x: Math.max(0, prev.x + (offset?.x || 0)),
+              y: Math.max(0, prev.y + (offset?.y || 0)),
+            }));
+          }}
+        />
+      )}
       <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-lg">
         <MapContainer
-          center={[37.722, -8.794]}
+          center={[37.725, -8.782]}
           zoom={15}
           style={{ height: "100%", width: "100%" }}
           ref={mapRef}
-          whenCreated={map => map.setView([37.722, -8.794], 15)}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <MapEvents />
           {activeConductors
             .filter(
               (conductor) =>
@@ -205,7 +169,8 @@ const PassengerMap: React.FC = () => {
                 </Popup>
               </Marker>
             ))}
-          {showUserLocation && userPosition && mapRef.current && (
+          {/* Exibe o marcador do usuário apenas após clicar em localizar-me e conceder permissão */}
+          {hasLocated && userPosition && mapRef.current && (
             <UserLocationMarker
               map={mapRef.current}
               position={userPosition}
@@ -217,27 +182,22 @@ const PassengerMap: React.FC = () => {
         <div
           style={{
             position: "absolute",
-            left: buttonPosition.x,
-            top: buttonPosition.y,
+            left: 20,
+            top: 20,
             zIndex: 1000,
-            touchAction: "none",
-            cursor: dragging ? "grabbing" : "grab",
           }}
-          onMouseDown={handleDragStart}
-          onMouseMove={handleDrag}
-          onMouseUp={handleDragEnd}
-          onTouchStart={handleDragStart}
-          onTouchMove={handleDrag}
-          onTouchEnd={handleDragEnd}
         >
           <LocationPermissionButton
-            onLocationGranted={handleLocationGranted}
-            onLocationDenied={handleLocationDenied}
-            showStatus={false}
-          >
-            {t("mapControls.locateMe")}
-          </LocationPermissionButton>
+            onClick={handleLocateMe}
+            isLoading={geoLoading}
+            permission={permission}
+          />
         </div>
+        {geoError && hasLocated && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded shadow z-[2000]">
+            {geoError}
+          </div>
+        )}
         <button
           onClick={handleRecenter}
           className="absolute bottom-4 right-4 z-[1000] bg-white p-2 rounded-full shadow-lg hover:bg-gray-100 transition"
@@ -264,8 +224,7 @@ const PassengerMap: React.FC = () => {
             />
           </svg>
         </button>
-        {/* Mensagem amigável se não houver condutores */}
-        {activeConductors.length === 0 && (
+        {activeConductors.length === 0 && !isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <div className="text-3xl mb-2">😢</div>
             <h3 className="text-lg font-semibold text-gray-700">
@@ -276,6 +235,9 @@ const PassengerMap: React.FC = () => {
             </p>
           </div>
         )}
+        {loadingOverlay}
+        {errorWarning}
+        {geolocationWarning}
       </div>
       {import.meta.env.DEV && <LocationDebug />}
     </>

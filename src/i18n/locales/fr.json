@@ -4,12 +4,12 @@
     "geolocationNotSupportedMessage": "Votre navigateur ne prend pas en charge la géolocalisation. Veuillez utiliser un navigateur moderne ou activer la localisation manuellement.",
     "mapError": "Erreur lors du chargement de la carte",
     "locationDenied": "Permission de localisation refusée",
-    "noTukTuksTitle": "Aucun tuk-tuk disponible",
+    "noTukTuksTitle": "Tuktuk hors ligne en ce moment !",
     "noTukTuksMessage": "Aucun tuk-tuk n'est disponible pour le moment. Veuillez réessayer plus tard ou nous contacter."
   },
   "loading": {
-    "takingTooLong": "Si cela prend trop de temps, veuillez vérifier votre connexion Internet.",
-    "tukTukLocation": "Chargement de la localisation du tuk-tuk..."
+    "tukTukLocation": "Chargement de la localisation du tuk-tuk...",
+    "takingTooLong": "Si cela prend trop de temps, veuillez vérifier votre connexion Internet."
   },
   "titleHighlight": "Nos tuk-tuks ?",
   "subtitle": "Confort, plaisir et expériences uniques garantis pour toute la famille",
@@ -172,6 +172,7 @@
       }
     },
     "mapControls": {
+      "locationActive": "Localisation active",
       "locateMe": "📍 Me localiser",
       "centerMap": "Centrer la carte",
       "waitingLocation": "En attente de la localisation...",
