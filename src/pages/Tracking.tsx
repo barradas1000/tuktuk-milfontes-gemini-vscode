@@ -1,5 +1,7 @@
 import React from "react";
 import PassengerMap from "@/components/PassengerMap";
+import TrackingMap from "@/components/TrackingMap";
+    
 
 export default function Tracking() {
   return (

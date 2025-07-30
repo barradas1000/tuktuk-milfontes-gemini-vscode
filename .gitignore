@@ -39,7 +39,7 @@ supabase-local/
 Thumbs.db
 Desktop.ini
 
-# Documentação e arquivos não necessários para deploy
+# Documentação, scripts e arquivos não necessários para deploy
 *.md
 *.MD
 *.sql
@@ -50,10 +50,7 @@ scripts/
 backup.dum
 *.cjs
 *.sh
-*.bat
-*.ps1
 *.txt
-*.csv
 *.bak
 *.dump
 *.old
@@ -80,13 +77,7 @@ yarn.lock
 coverage/
 *.test.js.snap
 
-# Documentação interna
-docs/
 
-# Backups e dumps
-backup*
-*.dump
-*.sql
 
 # Segredos e variáveis locais
 secrets.*

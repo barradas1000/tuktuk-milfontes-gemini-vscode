@@ -11,7 +11,7 @@ interface DistanceCalculatorProps {
   tuktukPosition: Coordinates | null;
   className?: string;
   showDetails?: boolean;
-  updateInterval?: number; // em milissegundos
+  updateInterval?: number;
 }
 
 export const DistanceCalculator: React.FC<DistanceCalculatorProps> = ({
@@ -19,7 +19,7 @@ export const DistanceCalculator: React.FC<DistanceCalculatorProps> = ({
   tuktukPosition,
   className = "",
   showDetails = true,
-  updateInterval = 5000, // atualiza a cada 5 segundos
+  updateInterval = 5000,
 }) => {
   const [distanceInfo, setDistanceInfo] = useState<{
     distance: number;
@@ -29,7 +29,17 @@ export const DistanceCalculator: React.FC<DistanceCalculatorProps> = ({
 
   const [isNearby, setIsNearby] = useState(false);
 
-  // Calcular distância e tempo estimado
+  // Função reutilizável para mostrar mensagens de status
+  const renderStatusMessage = (icon: string, message: string, classNameExtra = "") => (
+    <div className={`distance-calculator ${className}`}>
+      <div className={`distance-status ${classNameExtra}`}>
+        <span className="status-icon">{icon}</span>
+        <span className="status-text">{message}</span>
+      </div>
+    </div>
+  );
+
+  // Cálculo de distância e tempo
   const calculateDistance = () => {
     if (!userPosition || !tuktukPosition) {
       setDistanceInfo(null);
@@ -39,60 +49,41 @@ export const DistanceCalculator: React.FC<DistanceCalculatorProps> = ({
 
     const result = calculateDistanceAndTime(userPosition, tuktukPosition);
     setDistanceInfo(result);
-
-    // Verificar se está próximo (menos de 100m)
-    setIsNearby(result.distance <= 100);
+    setIsNearby(result.distance <= 100); // menos de 100 metros
   };
 
-  // Atualizar cálculo periodicamente
+  // Atualiza o cálculo periodicamente
   useEffect(() => {
     calculateDistance();
-
     const interval = setInterval(calculateDistance, updateInterval);
-
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userPosition, tuktukPosition, updateInterval]);
 
-  // Efeito para alerta de proximidade
+  // Notificação do navegador se estiver próximo
   useEffect(() => {
-    if (isNearby && userPosition && tuktukPosition) {
-      // Mostrar notificação se o navegador suportar
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("🚖 Seu tuk-tuk chegou!", {
-          body: "O tuk-tuk está a menos de 100m de você!",
-          icon: "/favicon.ico",
-          tag: "tuktuk-nearby",
-        });
-      }
+    if (
+      isNearby &&
+      userPosition &&
+      tuktukPosition &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    ) {
+      new Notification("🚖 Seu tuk-tuk chegou!", {
+        body: "O tuk-tuk está a menos de 100m de você!",
+        icon: "/favicon.ico",
+        tag: "tuktuk-nearby",
+      });
     }
   }, [isNearby, userPosition, tuktukPosition]);
 
-  if (!userPosition || !tuktukPosition) {
-    return (
-      <div className={`distance-calculator ${className}`}>
-        <div className="distance-status">
-          <span className="status-icon">📍</span>
-          <span className="status-text">Aguardando localização...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!distanceInfo) {
-    return (
-      <div className={`distance-calculator ${className}`}>
-        <div className="distance-status">
-          <span className="status-icon">⚠️</span>
-          <span className="status-text">Erro ao calcular distância</span>
-        </div>
-      </div>
-    );
-  }
+  // Verificações iniciais
+  if (!userPosition) return renderStatusMessage("📍", "Aguardando localização...");
+  if (!tuktukPosition) return renderStatusMessage("🛺", "Nenhum tuk-tuk está online no momento.", "text-red-600 font-semibold");
+  if (!distanceInfo) return renderStatusMessage("⚠️", "Erro ao calcular distância");
 
   return (
-    <div
-      className={`distance-calculator ${isNearby ? "nearby" : ""} ${className}`}
-    >
+    <div className={`distance-calculator ${isNearby ? "nearby" : ""} ${className}`}>
       <div className="distance-main">
         <div className="distance-icon">{isNearby ? "🚖" : "📍"}</div>
         <div className="distance-info">
@@ -120,7 +111,8 @@ export const DistanceCalculator: React.FC<DistanceCalculatorProps> = ({
         </div>
       )}
 
-      <style jsx>{`
+      {/* CSS no estilo inline JSX */}
+      <style>{`
         .distance-calculator {
           background: white;
           border-radius: 12px;
@@ -210,11 +202,7 @@ export const DistanceCalculator: React.FC<DistanceCalculatorProps> = ({
         }
 
         @keyframes bounce {
-          0%,
-          20%,
-          50%,
-          80%,
-          100% {
+          0%, 20%, 50%, 80%, 100% {
             transform: translateY(0);
           }
           40% {

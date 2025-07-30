@@ -43,6 +43,7 @@ import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import LanguageSelector from "@/components/LanguageSelector";
 import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
 import VideoModal from "../components/VideoModal";
+import ImageGallery from "@/components/ImageGallery";
 
 const Index = () => {
   console.log("Index component rendering");
@@ -57,42 +58,42 @@ const Index = () => {
       designation: "Lisboa",
       quote:
         "Melhor experiência da viagem! Meus filhos adoraram conhecer as praias secretas. O guia foi fantástico!",
-      src: "https://tuktuk-milfontes.vercel.app/lovable-uploads/93176928-185a-4123-a668-0265acd3725f.png",
+      src: "/lovable-uploads/93176928-185a-4123-a668-0265acd3725f.png",
     },
     {
       name: "João Santos",
       designation: "Porto",
       quote:
         "Passeio incrível! O tuk-tuk é super confortável e as vistas são de tirar o fôlego. Recomendo 100%!",
-      src: "https://tuktuk-milfontes.vercel.app/lovable-uploads/eb7253f4-32c5-4b77-b601-ca5c98ed6698.png",
+      src: "/lovable-uploads/eb7253f4-32c5-4b77-b601-ca5c98ed6698.png",
     },
     {
       name: "Maria Costa",
       designation: "Coimbra",
       quote:
         "Serviço profissional e muito divertido. As crianças não pararam de sorrir durante todo o passeio!",
-      src: "https://tuktuk-milfontes.vercel.app/lovable-uploads/70d09abb-337a-4ef7-b00a-91cb31b4c844.png",
+      src: "/lovable-uploads/70d09abb-337a-4ef7-b00a-91cb31b4c844.png",
     },
     {
       name: "Experiência Única",
       designation: "Milfontes",
       quote:
         "Descobrimos lugares incríveis que nunca encontraríamos sozinhos. Uma experiência inesquecível!",
-      src: "https://tuktuk-milfontes.vercel.app/lovable-uploads/84b72700-6433-4531-900d-07efa0e27900.png",
+      src: "/lovable-uploads/84b72700-6433-4531-900d-07efa0e27900.png",
     },
     {
       name: "Família Feliz",
       designation: "Aventura",
       quote:
         "Os tuk-tuks são modernos e seguros. Toda a família se divertiu muito durante o passeio!",
-      src: "https://tuktuk-milfontes.vercel.app/lovable-uploads/796db528-2314-421e-a595-cb48f9156d79.png",
+      src: "/lovable-uploads/796db528-2314-421e-a595-cb48f9156d79.png",
     },
     {
       name: "Diversão Garantida",
       designation: "Carnaval",
       quote:
         "Até nos eventos especiais, o serviço é impecável. Diversão e alegria em cada momento!",
-      src: "https://tuktuk-milfontes.vercel.app/lovable-uploads/365cc092-1790-4b63-a689-2a9b96502d5e.png",
+      src: "/lovable-uploads/365cc092-1790-4b63-a689-2a9b96502d5e.png",
     },
   ];
 
@@ -165,7 +166,7 @@ const Index = () => {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage:
-              "url('https://tuktuk-milfontes.vercel.app/lovable-uploads/c772d42e-6be5-4512-b5cd-e797cb242fe4.png')",
+              "url('/lovable-uploads/c772d42e-6be5-4512-b5cd-e797cb242fe4.png')",
           }}
         ></div>
 
@@ -177,7 +178,7 @@ const Index = () => {
                 <img
                   alt="TukTuk Milfontes Logo"
                   className="w-full h-full object-contain rounded-full"
-                  src="https://tuktuk-milfontes.vercel.app/lovable-uploads/cf00ebfe-2e98-4eb0-bc91-d80954178a9f.png"
+                  src="/lovable-uploads/cf00ebfe-2e98-4eb0-bc91-d80954178a9f.png"
                 />
               </div>
             </div>
@@ -250,35 +251,7 @@ const Index = () => {
             </p>
           </div>
 
-          {/* Image Gallery */}
-          <div className="grid md:grid-cols-2 gap-8 mb-16">
-            <div className="relative">
-              <img
-                src="https://tuktuk-milfontes.vercel.app/lovable-uploads/bc9c590b-26bf-4d4d-a27c-3e917afef291.png"
-                alt="Nosso Tuk-Tuk ao pôr do sol em Milfontes"
-                className="w-full h-64 object-cover rounded-xl shadow-lg"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-xl"></div>
-              <div className="absolute bottom-4 left-4 text-white">
-                <h3 className="text-xl font-bold">Experiência Única</h3>
-                <p className="text-sm">Paisagens deslumbrantes ao pôr do sol</p>
-              </div>
-            </div>
-            <div className="relative">
-              <img
-                src="https://tuktuk-milfontes.vercel.app/lovable-uploads/ddc85a0b-4a74-44e3-a0a6-bed937a5a686.png"
-                alt="Tuk-Tuk com cobertura contra chuva"
-                className="w-full h-64 object-cover rounded-xl shadow-lg"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-xl"></div>
-              <div className="absolute bottom-4 left-4 text-white">
-                <h3 className="text-xl font-bold">Proteção Climática</h3>
-                <p className="text-sm">
-                  Capota retrátil e proteção contra chuva
-                </p>
-              </div>
-            </div>
-          </div>
+          <ImageGallery />
 
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border-0 shadow-lg bg-gradient-to-br from-blue-50 to-white">
@@ -602,7 +575,7 @@ const Index = () => {
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div className="relative">
               <img
-                src="https://tuktuk-milfontes.vercel.app/lovable-uploads/47a59b02-cbe5-4103-ac4c-ea39946a7b96.png"
+                src="/lovable-uploads/47a59b02-cbe5-4103-ac4c-ea39946a7b96.png"
                 alt="Vista aérea de Vila Nova de Milfontes"
                 className="w-full h-96 object-cover rounded-xl shadow-lg"
               />
@@ -616,7 +589,7 @@ const Index = () => {
             </div>
             <div className="relative">
               <img
-                src="https://tuktuk-milfontes.vercel.app/lovable-uploads/a736c163-97f6-47cb-80c1-b2ed8d1bf580.png"
+                src="/lovable-uploads/a736c163-97f6-47cb-80c1-b2ed8d1bf580.png"
                 alt="Forte de Vila Nova de Milfontes"
                 className="w-full h-96 object-cover rounded-xl shadow-lg"
               />
