@@ -28,7 +28,9 @@ export function useActiveConductors() {
   return useQuery<Conductor[], Error>({
     queryKey: ["activeConductors"],
     queryFn: fetchActiveConductors,
-    staleTime: 60 * 1000,
+    staleTime: 0,
     retry: 2,
+    refetchInterval: 2000, // Atualiza a cada 2 segundos
+    refetchIntervalInBackground: true,
   });
 }
