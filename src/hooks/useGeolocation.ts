@@ -16,6 +16,10 @@ export interface GeolocationState {
   isLoading: boolean;
 }
 
+// Mensagem de orientação para permissão negada
+export const GEOLOCATION_DENIED_HELP =
+  'Permissão de localização negada.\nPara ativar, vá às configurações do navegador > Permissões > Localização e permita o acesso para este site. Em Android, pode ser necessário fechar apps com balões/flutuantes (ex: Messenger, gravador de ecrã) antes de tentar novamente.';
+
 export const useGeolocation = () => {
   const [state, setState] = useState<GeolocationState>({
     isSupported: false,
@@ -29,8 +33,8 @@ export const useGeolocation = () => {
     const isSupported = typeof navigator !== 'undefined' && 'geolocation' in navigator;
     setState(prevState => ({ ...prevState, isSupported }));
 
-    if (isSupported) {
-      navigator.permissions.query({ name: 'geolocation' }).then(status => {
+    if (isSupported && navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(status => {
         setState(prevState => ({ ...prevState, permission: status.state }));
         status.onchange = () => {
           setState(prevState => ({ ...prevState, permission: status.state }));
@@ -60,13 +64,32 @@ export const useGeolocation = () => {
         }));
       },
       err => {
+        let errorMessage = 'Erro ao obter localização.';
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            errorMessage = GEOLOCATION_DENIED_HELP;
+            break;
+          case err.POSITION_UNAVAILABLE:
+            errorMessage = 'Localização indisponível.';
+            break;
+          case err.TIMEOUT:
+            errorMessage = 'Tempo limite para obter localização excedido.';
+            break;
+          default:
+            errorMessage = err.message;
+        }
+
         setState(prevState => ({
           ...prevState,
-          error: err.message,
+          error: errorMessage,
           isLoading: false,
         }));
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
     );
   }, [state.isSupported]);
 
