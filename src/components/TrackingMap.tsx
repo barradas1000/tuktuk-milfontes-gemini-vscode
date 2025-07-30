@@ -79,7 +79,7 @@ const UserLocationMarker: React.FC<TrackingMapProps> = ({
   // Quando a posição muda
   useEffect(() => {
     if (position) {
-      const { latitude, longitude, accuracy } = (position as GeolocationPosition).coords;
+      const { latitude, longitude, accuracy } = ((position as unknown) as GeolocationPosition).coords;
       addMarkerToMap(latitude, longitude, accuracy);
     }
   }, [position, addMarkerToMap]);
