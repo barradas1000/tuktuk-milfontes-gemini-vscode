@@ -119,7 +119,7 @@ const PassengerMap: React.FC<PassengerMapProps> = ({ onLocate }) => {
     <>
 
 
-      {userPosition && (
+      {userPosition && nearestInfo?.conductor && (
         <div
           style={{ position: 'absolute', left: distanceCardPos.x, top: distanceCardPos.y, zIndex: 1500, touchAction: 'none', cursor: 'grab' }}
           onTouchStart={(e) => {
@@ -295,7 +295,9 @@ const PassengerMap: React.FC<PassengerMapProps> = ({ onLocate }) => {
           </svg>
         </button>
 
-        {!isLoading && activeConductors.length === 0 && (
+
+        {/* Exibe mensagem imediatamente se não houver tuk-tuks ativos, sem loading infinito */}
+        {activeConductors.length === 0 && !isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-white/80">
             <div className="text-3xl mb-2">😢</div>
             <h3 className="text-lg font-semibold text-gray-700">{t("errors.noTukTuksTitle")}</h3>
@@ -303,7 +305,8 @@ const PassengerMap: React.FC<PassengerMapProps> = ({ onLocate }) => {
           </div>
         )}
 
-        {isLoading && (
+        {/* Loading só aparece se está carregando E há pelo menos 1 tuk-tuk ativo */}
+        {isLoading && activeConductors.length > 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-white/60 z-[2000]">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
             <p>{t("loading.tukTukLocation")}</p>

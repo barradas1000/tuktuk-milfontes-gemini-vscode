@@ -1,107 +1,88 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "../lib/supabase";
 import {
   updateDriverTrackingStatus,
   getDriverTrackingStatus,
   updateConductorLocation,
 } from "@/services/supabaseService";
-import { useToast } from "@/components/ui/use-toast";
 
 interface ToggleConductorTrackingButtonProps {
   conductorId: string;
 }
 
-const ToggleConductorTrackingButton: React.FC<
-  ToggleConductorTrackingButtonProps
-> = ({ conductorId }) => {
-  const [isTracking, setIsTracking] = useState(false);
+const ToggleConductorTrackingButton: React.FC<ToggleConductorTrackingButtonProps> = ({ conductorId }) => {
+  // Estado inicial lido do localStorage
+  const [isTracking, setIsTracking] = useState(() => {
+    const local = localStorage.getItem("isTrackingEnabled");
+    return local === "true";
+  });
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  console.log(`🚗 TrackingButton inicializado para condutor: ${conductorId}`);
-
-  // Verificar status inicial
   useEffect(() => {
-    const checkStatus = async () => {
-      if (!conductorId) {
-        console.log("⚠️ Nenhum conductorId fornecido");
-        return;
-      }
-
+    if (!conductorId) return;
+    (async () => {
       try {
-        console.log(
-          `🔍 Verificando status inicial do condutor: ${conductorId}`
-        );
         const trackingStatus = await getDriverTrackingStatus(conductorId);
-        console.log(
-          `📊 Status inicial: ${trackingStatus ? "ATIVO" : "INATIVO"}`
-        );
         setIsTracking(trackingStatus);
+        localStorage.setItem("isTrackingEnabled", String(trackingStatus));
       } catch (error) {
-        console.error("❌ Erro ao verificar status inicial:", error);
+        console.error("Erro ao verificar status inicial:", error);
       }
-    };
-
-    checkStatus();
+    })();
   }, [conductorId]);
 
-  const startTracking = async () => {
-    setLoading(true);
-    console.log(`▶️ Iniciando tracking para condutor: ${conductorId}`);
+  useEffect(() => {
+    localStorage.setItem("isTrackingEnabled", String(isTracking));
+  }, [isTracking]);
 
-    try {
-      // 1. Verificar geolocalização
-      if (!navigator.geolocation) {
-        throw new Error("Geolocalização não suportada neste navegador");
-      }
+  const mostrarToastErro = (titulo: string, descricao: string) =>
+    toast({ title: titulo, description: descricao, variant: "destructive" });
 
-      // 2. Atualizar status na base de dados
-      await updateDriverTrackingStatus(conductorId, true);
+  const mostrarToastSucesso = (titulo: string, descricao: string) =>
+    toast({ title: titulo, description: descricao });
 
-      // 3. Iniciar monitoramento de localização
-      const id = navigator.geolocation.watchPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log(`📍 Nova localização: ${latitude}, ${longitude}`);
-
-          try {
-            await updateConductorLocation(conductorId, latitude, longitude);
-          } catch (error) {
-            console.error("Erro ao atualizar localização:", error);
-          }
-        },
-        (error) => {
-          console.error("Erro de geolocalização:", error);
-          toast({
-            title: "Erro de Localização",
-            description: "Verifique as permissões do navegador",
-            variant: "destructive",
-          });
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 30000,
+  const iniciarGeolocalizacao = () => {
+    return navigator.geolocation.watchPosition(
+      async ({ coords: { latitude, longitude } }) => {
+        try {
+          await updateConductorLocation(conductorId, latitude, longitude);
+        } catch (error) {
+          console.error("Erro ao atualizar localização:", error);
         }
-      );
+      },
+      (error) => {
+        console.error("Erro de geolocalização:", error);
+        mostrarToastErro("Erro de Localização", "Verifique as permissões do navegador");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    );
+  };
 
+  const startTracking = async () => {
+    if (!navigator.geolocation) {
+      mostrarToastErro("Erro", "Geolocalização não suportada");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await updateDriverTrackingStatus(conductorId, true);
+      const id = iniciarGeolocalizacao();
       setWatchId(id);
       setIsTracking(true);
-
-      toast({
-        title: "Tracking Ativo",
-        description: "TukTuk está agora visível no mapa",
-      });
+      localStorage.setItem("isTrackingEnabled", "true");
+      mostrarToastSucesso("Tracking Ativo", "TukTuk está agora visível no mapa");
     } catch (error) {
-      console.error("❌ Erro ao iniciar tracking:", error);
-      toast({
-        title: "Erro ao Iniciar",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      console.error("Erro ao iniciar tracking:", error);
+      mostrarToastErro("Erro ao Iniciar", error instanceof Error ? error.message : "Erro desconhecido");
     } finally {
       setLoading(false);
     }
@@ -109,36 +90,24 @@ const ToggleConductorTrackingButton: React.FC<
 
   const stopTracking = async () => {
     setLoading(true);
-    console.log(`🛑 Parando tracking para condutor: ${conductorId}`);
-
     try {
-      // 1. Parar geolocalização
       if (watchId !== null) {
-        console.log(`🔴 Parando watchPosition ID: ${watchId}`);
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
 
-      // 2. Atualizar status na base de dados
       await updateDriverTrackingStatus(conductorId, false);
-
       setIsTracking(false);
+      localStorage.setItem("isTrackingEnabled", "false");
 
-      toast({
-        title: "Tracking Desativo",
-        description: "TukTuk não está mais visível no mapa",
-      });
+      mostrarToastSucesso("Tracking Desativo", "TukTuk não está mais visível no mapa");
     } catch (error) {
-      console.error("❌ Erro ao parar tracking:", error);
-      toast({
-        title: "Erro ao Parar",
-        description:
-          error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      console.error("Erro ao parar tracking:", error);
+      mostrarToastErro("Erro ao Parar", error instanceof Error ? error.message : "Erro desconhecido");
 
-      // Mesmo com erro, limpar estado local
+      // Mesmo com erro, limpar
       setIsTracking(false);
+      localStorage.setItem("isTrackingEnabled", "false");
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
       }
@@ -150,9 +119,7 @@ const ToggleConductorTrackingButton: React.FC<
   return (
     <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-lg shadow-lg">
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          🎛️ Controlo de Rastreamento
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">🎛️ Controlo de Rastreamento</h3>
         <p className="text-sm text-gray-600">
           {isTracking ? "🟢 TukTuk visível no mapa" : "🔴 TukTuk offline"}
         </p>
@@ -162,10 +129,8 @@ const ToggleConductorTrackingButton: React.FC<
         onClick={isTracking ? stopTracking : startTracking}
         disabled={loading}
         className={`px-8 py-3 text-lg font-semibold ${
-          isTracking
-            ? "bg-red-500 hover:bg-red-600 text-white"
-            : "bg-green-500 hover:bg-green-600 text-white"
-        }`}
+          isTracking ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"
+        } text-white`}
       >
         {loading ? (
           <div className="flex items-center gap-2">
@@ -185,11 +150,10 @@ const ToggleConductorTrackingButton: React.FC<
         </div>
       )}
 
-      {/* Debug info em desenvolvimento */}
       {import.meta.env.DEV && (
         <div className="text-xs text-gray-400 text-center">
           <p>Debug: conductorId = {conductorId}</p>
-          <p>WatchID: {watchId || "null"}</p>
+          <p>WatchID: {watchId ?? "null"}</p>
         </div>
       )}
     </div>
