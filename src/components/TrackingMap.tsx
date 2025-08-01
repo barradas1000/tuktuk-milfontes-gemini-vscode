@@ -23,7 +23,7 @@ interface TrackingMapProps {
 }
 
 // Componente para exibir o marcador da localização do utilizador
-const UserLocationMarker: React.FC<TrackingMapProps> = ({
+export const UserLocationMarker: React.FC<TrackingMapProps> = ({
   onPositionChange,
   onError,
   autoCenter = true,

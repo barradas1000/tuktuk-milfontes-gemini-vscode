@@ -26,6 +26,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const CandidaturaPublicaPage = lazy(
   () => import("./pages/CandidaturaPublicaPage")
 );
+const MapTest = lazy(() => import("./pages/MapTest"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 
 import "./i18n";
@@ -179,6 +180,18 @@ const AppContent = () => {
             }
           >
             <CandidaturaPublicaPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/map-test"
+        element={
+          <Suspense
+            fallback={
+              <LoadingFallback message="Carregando teste do mapa..." />
+            }
+          >
+            <MapTest />
           </Suspense>
         }
       />

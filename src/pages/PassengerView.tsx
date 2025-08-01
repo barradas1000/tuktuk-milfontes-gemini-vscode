@@ -108,11 +108,11 @@ const PassengerView: React.FC = () => {
           </Card>
 
           {/* Configuração de localização */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t("tuktukTracking.locationSetup.title")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-gray-600">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">{t("tuktukTracking.locationSetup.title")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-gray-600">
               {setupSections.map((section, idx) => (
                 <div key={idx}>
                   <StepList title={section.title} steps={section.steps} />

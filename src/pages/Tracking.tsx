@@ -1,30 +1,39 @@
-import React, { useEffect, useState } from "react";
+import React, { useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
 import { useActiveConductors } from "../hooks/useActiveConductors";
+import { useGeolocation } from "../hooks/useGeolocation";
+import DraggableDistanceCard from "./DraggableDistanceCard";
+import { LocationPermissionButton } from "./LocationPermissionButton";
+import LocationBlockedMessage from "./LocationBlockedMessage";
+import tukTukIcon from "../assets/tuktuk-icon.png";
+import PassengerMapClean from "../components/PassengerMapClean";
 
+const TukTukIcon = new L.Icon({
+  iconUrl: tukTukIcon,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+});
 
-export default function Tracking() {
-  const [isTrackingEnabled, setIsTrackingEnabled] = useState(true);
-  const { data: conductors = [], isLoading } = useActiveConductors();
+const PassengerMap = () => {
+// ...existing code...
+export default TrackingWithTwoMaps;
 
-  useEffect(() => {
-    const tracking = localStorage.getItem("isTrackingEnabled") === "true";
-    setIsTrackingEnabled(tracking);
-  }, []);
-
-  const hasActiveConductors = conductors.length > 0;
-
+// Exemplo de página com dois mapas de 500px
+export const TrackingWithTwoMaps = () => {
+  const { data: activeConductors = [] } = useActiveConductors();
+  const { position: userPosition } = useGeolocation();
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <h1 className="text-2xl font-bold mb-4 text-blue-700">
-        Acompanhe seu TukTuk em tempo real
-      </h1>
-      <div className="w-full max-w-4xl h-[70vh] rounded-lg shadow-lg overflow-hidden relative">
-        {isTrackingEnabled && hasActiveConductors ? (
-          <Mapa conductors={conductors} />
-        ) : (
-          <ConductorCard message="Nenhum TukTuk activo encontrado no momento." />
-        )}
+    <div className="flex flex-col gap-8 items-center w-full">
+      <div className="w-full max-w-2xl p-4 bg-white rounded-lg shadow border border-gray-200">
+        <h2 className="text-lg font-bold mb-2 text-blue-700">Mapa 1</h2>
+        <PassengerMapClean userLocation={userPosition ? [userPosition.lat, userPosition.lng] : [37.725, -8.782]} conductors={activeConductors} />
+      </div>
+      <div className="w-full max-w-2xl p-4 bg-white rounded-lg shadow border border-gray-200">
+        <h2 className="text-lg font-bold mb-2 text-blue-700">Mapa 2</h2>
+        <PassengerMapClean userLocation={userPosition ? [userPosition.lat, userPosition.lng] : [37.725, -8.782]} conductors={activeConductors} />
       </div>
     </div>
   );
-}

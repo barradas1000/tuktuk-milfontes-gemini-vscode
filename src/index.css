@@ -121,4 +121,14 @@
   section {
     width: 100%;
   }
+
+  /* Fix for user marker icon */
+  .user-marker {
+    background: #2563eb;
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 16px !important;
+    height: 16px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
 }
