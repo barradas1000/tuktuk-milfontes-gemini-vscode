@@ -4,7 +4,7 @@ import L from "leaflet";
 
 // Props: userLocation: [lat, lng], conductors: [{ id, latitude, longitude }]
 const PassengerMapClean = ({ userLocation, conductors }) => (
-  <div className="h-[500px] w-full rounded-lg overflow-hidden">
+  <div className="w-full rounded-lg overflow-hidden h-[350px] sm:h-[400px] md:h-[500px]">
     <MapContainer
       center={userLocation || [37.725, -8.782]}
       zoom={15}

@@ -26,12 +26,12 @@ export const TrackingWithTwoMaps = () => {
   const { data: activeConductors = [] } = useActiveConductors();
   const { position: userPosition } = useGeolocation();
   return (
-    <div className="flex flex-col gap-8 items-center w-full">
-      <div className="w-full max-w-2xl p-4 bg-white rounded-lg shadow border border-gray-200">
+    <div className="flex flex-col gap-4 items-center w-full px-1 sm:px-2 md:px-0">
+      <div className="w-full max-w-full md:max-w-2xl p-2 md:p-4 bg-white rounded-lg shadow border border-gray-200">
         <h2 className="text-lg font-bold mb-2 text-blue-700">Mapa 1</h2>
         <PassengerMapClean userLocation={userPosition ? [userPosition.lat, userPosition.lng] : [37.725, -8.782]} conductors={activeConductors} />
       </div>
-      <div className="w-full max-w-2xl p-4 bg-white rounded-lg shadow border border-gray-200">
+      <div className="w-full max-w-full md:max-w-2xl p-2 md:p-4 bg-white rounded-lg shadow border border-gray-200">
         <h2 className="text-lg font-bold mb-2 text-blue-700">Mapa 2</h2>
         <PassengerMapClean userLocation={userPosition ? [userPosition.lat, userPosition.lng] : [37.725, -8.782]} conductors={activeConductors} />
       </div>
